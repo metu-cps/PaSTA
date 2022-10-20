@@ -1,0 +1,14 @@
+{
+    "taPath": "NoodlesCooking.ta.json",
+    "name": "Safe from catastrophe",
+    "type": "safety",
+    "locations": ["catastrophe"],
+    "costCoefficients": [
+        {"name": "dPot", "value": 1},
+        {"name": "dTimer", "value": 1}
+    ],
+    "parameters": [
+        {"name": "dPot", "lowerBound": 0, "upperBound": 10},
+        {"name": "dTimer", "lowerBound": 0, "upperBound": 10}
+    ]
+}

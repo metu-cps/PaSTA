@@ -1,0 +1,25 @@
+{
+    "name": "Noodles Cooking",
+    "locations": ["heating", "ticking", "cooked", "eating", "catastrophe"],
+    "initialLocation": "heating",
+    "actions": ["startTimer", "ring", "miam", "boilover"],
+    "clocks": ["xPot", "xTimer"],
+    "transitions": [
+        {"source": "heating", "target": "ticking", "action": "startTimer", "reset": ["xTimer"], "guardConstraints": []},
+        {"source": "heating", "target": "catastrophe", "action": "boilOver", "reset": [], "guardConstraints": ["dPot == xPot"]},
+        {"source": "ticking", "target": "cooked", "action": "ring", "reset": [], "guardConstraints": ["dTimer == xTimer"]},
+        {"source": "ticking", "target": "catastrophe", "action": "boilOver", "reset": [], "guardConstraints": ["dPot == xPot"]},
+        {"source": "cooked", "target": "eating", "action": "miam", "reset": [], "guardConstraints": ["dPot == xPot"]}
+    ],
+    "invariants": [
+        {"location": "heating", "constraints": ["dPot >= xPot"]},
+        {"location": "ticking", "constraints": ["dPot >= xPot", "dTimer >= xTimer"]},
+        {"location": "cooked", "constraints": ["dPot >= xPot"]},
+        {"location": "eating", "constraints": []},
+        {"location": "catastrophe", "constraints": []}
+    ],
+    "parameters": [
+        {"name": "dPot", "lowerBound": 0, "upperBound": 10},
+        {"name": "dTimer", "lowerBound": 0, "upperBound": 10}
+    ]
+}

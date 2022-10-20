@@ -1,0 +1,16 @@
+{
+    "taPath": "Train.ta.json",
+    "name": "Safe from Crash",
+    "type": "safety",
+    "locations": ["Crash"],
+    "costCoefficients": [
+        {"name": "dApproach", "value": 1},
+        {"name": "dStartDown", "value": 1},
+        {"name": "dGetDown", "value": 1}
+    ],
+    "parameters": [
+        {"name": "dApproach", "lowerBound": 0, "upperBound": 10},
+        {"name": "dStartDown", "lowerBound": 0, "upperBound": 10},
+        {"name": "dGetDown", "lowerBound": 0, "upperBound": 10}
+    ]
+}

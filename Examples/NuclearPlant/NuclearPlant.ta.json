@@ -1,0 +1,31 @@
+{
+    "name": "Nuclear Plant",
+    "locations": ["normal", "heating", "ringing", "watering", "stopped", "boom"],
+    "initialLocation": "normal",
+    "actions": ["startHeating", "triggerAlarm", "startWatering", "endWatering", "restart", "tooHot"],
+    "clocks": ["x1", "x2"],
+    "transitions": [
+        {"source": "normal", "target": "heating", "action": "startHeating", "reset": ["x1", "x2"], "guardConstraints": []},
+        {"source": "heating", "target": "ringing", "action": "triggerAlarm", "reset": ["x2"], "guardConstraints": ["p2 == x2"]},
+        {"source": "heating", "target": "boom", "action": "tooHot", "reset": [], "guardConstraints": ["x1 >= p1"]},
+        {"source": "ringing", "target": "watering", "action": "startWatering", "reset": ["x2"], "guardConstraints": ["p3 == x2"]},
+        {"source": "ringing", "target": "boom", "action": "tooHot", "reset": [], "guardConstraints": ["x1 >= p1"]},
+        {"source": "watering", "target": "stopped", "action": "endWatering", "reset": ["x1", "x2"], "guardConstraints": ["p4 >= x2"]},
+        {"source": "watering", "target": "boom", "action": "tooHot", "reset": [], "guardConstraints": ["x1 >= p1"]},
+        {"source": "stopped", "target": "normal", "action": "restart", "reset": ["x1", "x2"], "guardConstraints": []}
+    ],
+    "invariants": [
+        {"location": "normal", "constraints": []},
+        {"location": "heating", "constraints": ["p1 >= x1", "p2 >= x2"]},
+        {"location": "ringing", "constraints": ["p1 >= x1", "p3 >= x2"]},
+        {"location": "watering", "constraints": ["p1 >= x1", "p4 >= x2"]},
+        {"location": "stopped", "constraints": []},
+        {"location": "boom", "constraints": []}
+    ],
+    "parameters": [
+        {"name": "p1", "lowerBound": 0, "upperBound": 10},
+        {"name": "p2", "lowerBound": 0, "upperBound": 10},
+        {"name": "p3", "lowerBound": 0, "upperBound": 10},
+        {"name": "p4", "lowerBound": 0, "upperBound": 10}
+    ]
+}
