@@ -19,7 +19,7 @@
         {"location": "catastrophe", "constraints": []}
     ],
     "parameters": [
-        {"name": "dPot", "lowerBound": 0, "upperBound": 10},
-        {"name": "dTimer", "lowerBound": 0, "upperBound": 10}
+        {"name": "dPot", "lowerBound": 1, "upperBound": 10},
+        {"name": "dTimer", "lowerBound": 1, "upperBound": 10}
     ]
 }

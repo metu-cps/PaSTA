@@ -7,10 +7,10 @@
     "transitions": [
         {"source": "Far", "target": "Approaching", "action": "approach", "reset": ["x"], "guardConstraints": []},
         {"source": "Approaching", "target": "Lowering", "action": "startDown", "reset": ["y"], "guardConstraints": ["dStartDown == x"]},
-        {"source": "Approaching", "target": "Crash", "action": "pass", "reset": [], "guardConstraints": ["dApproach = x"]},
-        {"source": "Lowering", "target": "Safe", "action": "endDown", "reset": [], "guardConstraints": ["dGetDown = y"]},
-        {"source": "Lowering", "target": "Crash", "action": "pass", "reset": [], "guardConstraints": ["dApproach = x"]},
-        {"source": "Safe", "target": "Far", "action": "pass", "reset": ["x", "y"], "guardConstraints": ["dApproach = x"]}
+        {"source": "Approaching", "target": "Crash", "action": "pass", "reset": [], "guardConstraints": ["dApproach == x"]},
+        {"source": "Lowering", "target": "Safe", "action": "endDown", "reset": [], "guardConstraints": ["dGetDown == y"]},
+        {"source": "Lowering", "target": "Crash", "action": "pass", "reset": [], "guardConstraints": ["dApproach == x"]},
+        {"source": "Safe", "target": "Far", "action": "pass", "reset": ["x", "y"], "guardConstraints": ["dApproach == x"]}
     ],
     "invariants": [
         {"location": "Far", "constraints": []},
