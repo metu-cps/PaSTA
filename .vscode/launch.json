@@ -1,0 +1,44 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "NoodlesCooking debug",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": ["-i", "./Examples/NoodlesCooking/NoodlesCooking.safety1.json", "-o", "NoodlesCooking.safety1.debug.log", "-d"]
+        },
+        {
+            "name": "NuclearPlant debug",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": ["-i", "./Examples/NuclearPlant/NuclearPlant.safety1.json", "-o", "NuclearPlant.safety1.debug.log", "-d"]
+        },
+        {
+            "name": "OperationLoop debug",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": ["-i", "./Examples/OperationLoop/OperationLoop.safety1.json", "-o", "OperationLoop.safety1.debug.log", "-d"]
+        },
+        {
+            "name": "Train debug",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": ["-i", "./Examples/Train/Train.safety1.json", "-o", "Train.safety1.debug.log", "-d"]
+        }
+    ]
+}
