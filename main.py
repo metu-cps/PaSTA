@@ -286,8 +286,8 @@ class Path:
         log.info(f"\tDNF has {unsat}/{dnf.num_args()} unsatisfiable terms\n")
 
 
-def solveSafetyProblem(ta, spec, roundIndex):
-    log.info(f'Solving problem "{spec.name}" on TA "{ta.name}" #{roundIndex}')
+def solveSafetyProblem(ta, spec):
+    log.info(f'Solving problem "{spec.name}" on TA "{ta.name}"')
     initialPath = Path(ta.clocks)
     initialPath.addLocation(ta, ta.initialLocation)
     pathList = [initialPath]
@@ -363,23 +363,22 @@ def solveParametricConstraints(taParameters, costCoefficients, restrictions):
             return False
 
 
-def solve(specPath, roundCount):
-    for i in range(roundCount):
-        with open(specPath) as input_file:
-            spec = json.load(input_file, object_hook=lambda d: SimpleNamespace(**d))
-        with open(os.path.join(os.path.dirname(specPath), spec.taPath)) as input_file:
-            ta = json.load(input_file, object_hook=lambda d: SimpleNamespace(**d))
-        if hasattr(spec, 'parameters'):
-            for sp in spec.parameters:
-                for ap in ta.parameters:
-                    if sp.name != ap.name:
-                        continue
-                    if hasattr(sp, 'lowerBound'):
-                        ap.lowerBound = sp.lowerBound
-                    if hasattr(sp, 'upperBound'):
-                        ap.upperBound = sp.upperBound
-        if spec.type == "safety":
-            solveSafetyProblem(ta, spec, i + 1)
+def solve(specPath):
+    with open(specPath) as input_file:
+        spec = json.load(input_file, object_hook=lambda d: SimpleNamespace(**d))
+    with open(os.path.join(os.path.dirname(specPath), spec.taPath)) as input_file:
+        ta = json.load(input_file, object_hook=lambda d: SimpleNamespace(**d))
+    if hasattr(spec, 'parameters'):
+        for sp in spec.parameters:
+            for ap in ta.parameters:
+                if sp.name != ap.name:
+                    continue
+                if hasattr(sp, 'lowerBound'):
+                    ap.lowerBound = sp.lowerBound
+                if hasattr(sp, 'upperBound'):
+                    ap.upperBound = sp.upperBound
+    if spec.type == "safety":
+        solveSafetyProblem(ta, spec)
     return
 
 def replaceFullWord(str, search, replace):
@@ -389,9 +388,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '-i', '--input',
-        help='Space separated list of spec json files as inputs',
-        dest="inputPaths",
-        nargs='+',
+        help='Spec json files as input',
+        dest="inputPath",
+        required=True)
+    parser.add_argument(
+        '-o', '--output',
+        help='Spec json files as input',
+        dest="outputPath",
         required=False)
     parser.add_argument(
         '-d', '--debug',
@@ -404,19 +407,16 @@ if __name__ == '__main__':
         help="Be verbose",
         action="store_const", dest="loglevel", const=log.INFO
     )
-    parser.add_argument(
-        '-r', '--round',
-        help='Number of rounds to repeat for each input',
-        dest="roundCount", type=int, default=1
-    )
     args = parser.parse_args()
+
+    if os.path.isdir("logs") == False:
+        os.makedirs("logs")
 
     log.basicConfig(
         level=args.loglevel,
-        filename="log.txt",
+        filename=os.path.join("logs", args.outputPath or (os.path.basename(args.inputPath) + ".log")),
         format='%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s',
         datefmt='%H:%M:%S',
         filemode='w'
     )
-    for p in args.inputPaths:
-        solve(p, args.roundCount)
+    solve(args.inputPath)
