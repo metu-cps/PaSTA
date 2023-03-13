@@ -9,6 +9,7 @@ import logging as log
 from z3 import *
 
 class Path:
+    _decisionVariables = []
     def __init__(self, clocks=[]):
         self.locations = []
         self.transitions = []
@@ -157,22 +158,14 @@ class Path:
         log.info(f"\tAssertions: {joinedAssertions}")
         delayNames = [f"d{i}_{x}" for i,x in enumerate(self.locations)]
         s = Optimize()
+        self.initDecisionVariables(ta, Int)
         for d in delayNames:
-            if d in globals():
-                del globals()[d]
-            globals()[d] = Real(d)
             s.add(eval(f"{d} >= 0"))
 
         for c in self.cycleCounters:
-            if c in globals():
-                del globals()[c]
-            globals()[c] = Int(c)
             s.add(eval(f"{c} >= 0"))
 
         for p in ta.parameters:
-            if p.name in globals():
-                del globals()[p.name]
-            globals()[p.name] = Int(p.name)
             s.add(eval(f"{p.name} >= {p.lowerBound}"))
             s.add(eval(f"{p.name} <= {p.upperBound}"))
         
@@ -187,36 +180,37 @@ class Path:
         else:
             log.debug("Path is infeasible")
             return False
+    def initDecisionVariables(self, ta, cycleCounterType):
+        for d in Path._decisionVariables:
+            if d in globals():
+                del globals()[d]
+        delayNames = [f"d{i}_{x}" for i,x in enumerate(self.locations)]
+        for d in delayNames:
+            Path._decisionVariables.append(d)
+            globals()[d] = Real(d)
+        if cycleCounterType == Int:
+            for c in self.cycleCounters:
+                Path._decisionVariables.append(c)
+                globals()[c] = Int(c)
+        else:
+            for c in self.cycleCounters:
+                Path._decisionVariables.append(c)
+                globals()[c] = Real(c)
+        for p in ta.parameters:
+            Path._decisionVariables.append(p.name)
+            globals()[p.name] = Int(p.name)
     def makeInfeasible(self, ta, restrictions):
         log.info("\tTrying to make the path infeasible")
+        self.initDecisionVariables(ta, Real)
+        delayNames = [f"d{i}_{x}" for i,x in enumerate(self.locations)]
+
+        assertionsWithDelays = list(filter(lambda a: bool(re.match(r".*d\d+_", a)), self.assertions))
+        joinedAssertions = "And(" + str.join(", ", assertionsWithDelays) + ")"
+        
         g = Goal()
         t = Tactic('qe')
         if len(self.cycleCounters) > 0:
             t = With(t, qe_nonlinear=True)
-
-        delayNames = [f"d{i}_{x}" for i,x in enumerate(self.locations)]
-
-        delayAssertions = []
-        for d in delayNames:
-            if d in globals():
-                del globals()[d]
-            globals()[d] = Real(d)
-            # delayAssertions.append(f"{d} >= 0")
-
-        cycleAssertions = []
-        for c in self.cycleCounters:
-            if c in globals():
-                del globals()[c]
-            globals()[c] = Real(c)
-            # cycleAssertions.append(f"{c} >= 0")
-
-        for p in ta.parameters:
-            if p.name in globals():
-                del globals()[p.name]
-            globals()[p.name] = Int(p.name)
-        assertionsWithDelays = list(filter(lambda a: bool(re.match(r".*d\d+_", a)), self.assertions))
-        joinedAssertions = "And(" + str.join(", ", assertionsWithDelays + delayAssertions + cycleAssertions) + ")"
-        
         qeArgs = str.join(", ", delayNames + self.cycleCounters)
         quantifiedDelayConstraint = f"Not(Exists([{qeArgs}], {joinedAssertions}))"
         g.add(eval(quantifiedDelayConstraint))
