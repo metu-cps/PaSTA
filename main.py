@@ -4,7 +4,6 @@ import logging as log
 import os
 import re
 from types import SimpleNamespace
-from utils import *
 import logging as log
 from z3 import *
 
@@ -116,7 +115,7 @@ class Path:
             log.info("\t\t" + ', '.join(list(map(lambda a: str(a[0]) + " - " + str(a[1]), self.cycles))))
             log.info("\tCycle Counters:")
             log.info("\t\t" + str(self.cycleCounters))
-    def isFeasible(self, ta, restrictions):
+    def isFeasible(self, ta, restrictions, reportMinCycles = False):
         log.info(f"Checking feasibility of the path")
         self.logDetails()
         self.__initDecisionVariables(ta, Int)
@@ -138,7 +137,18 @@ class Path:
         for r in restrictions:
             s.add(r)
 
-        c = s.check()
+        if reportMinCycles and len(self.cycleCounters) > 0:
+            cost = Real('cost') # a little faster than Int
+            tmp = map(lambda a: f"{a} * 1.0", self.cycleCounters)
+            costEq = f"cost == 0 + {'+'.join(tmp)}" # adding a 0 somehow fixes the result
+            s.add(eval(costEq))
+
+            h = s.minimize(cost)
+            c = s.check()
+            s.lower(h)
+        else:
+            c = s.check()
+
         if c.r == 1:
             log.info(f"\tPath is feasible. A model is : {s.model()}")
             return True
@@ -387,14 +397,14 @@ class Path:
 
 ###################################################################################
 
-def solveSafetyProblem(ta, spec):
+def solveSafetyProblem(ta, spec, reportMinCycles):
     log.info(f'Solving problem "{spec.name}" on TA "{ta.name}"')
     initialPath = Path.getInitialPath(ta)
     pathList = [initialPath]
     restrictions = []
     while len(pathList) > 0:
         path = pathList.pop()
-        if path.isFeasible(ta, restrictions) == False:
+        if path.isFeasible(ta, restrictions, reportMinCycles) == False:
             continue
         if path.endsInUnsafeLocation(spec):
             infeasibleMakingConstraint = path.makeInfeasible(ta, restrictions)
@@ -463,7 +473,7 @@ def solveParametricConstraints(taParameters, restrictions, costCoefficients):
 def replaceFullWord(str, search, replace):
     return re.sub(r"\b" + search + r"\b", replace, str)
 
-def solve(specPath):
+def solve(specPath, reportMinCycles):
     with open(specPath) as input_file:
         spec = json.load(input_file, object_hook=lambda d: SimpleNamespace(**d))
     with open(os.path.join(os.path.dirname(specPath), spec.taPath)) as input_file:
@@ -478,7 +488,7 @@ def solve(specPath):
                 if hasattr(sp, 'upperBound'):
                     ap.upperBound = sp.upperBound
     if spec.type == "safety":
-        solveSafetyProblem(ta, spec)
+        solveSafetyProblem(ta, spec, reportMinCycles)
     return
 
 if __name__ == '__main__':
@@ -493,6 +503,7 @@ if __name__ == '__main__':
         help='Spec log files as output',
         dest="outputPath",
         required=False)
+    parser.add_argument('--reportMinCycles', action=argparse.BooleanOptionalAction)
     parser.add_argument(
         '-d', '--debug',
         help="Print debugging statements",
@@ -516,4 +527,4 @@ if __name__ == '__main__':
         datefmt='%H:%M:%S',
         filemode='w'
     )
-    solve(args.inputPath)
+    solve(args.inputPath, args.reportMinCycles)
