@@ -116,6 +116,7 @@ class Path:
             log.info("\tCycle Counters:")
             log.info("\t\t" + str(self.cycleCounters))
     def isFeasible(self, ta, restrictions, reportMinCycles, realValuedParameters):
+        reportMinCycles = True
         log.info(f"Checking feasibility of the path")
         self.logDetails()
         self.__initDecisionVariables(ta, Int, realValuedParameters)
@@ -447,6 +448,8 @@ def solveSafetyProblem(ta, spec, reportMinCycles, realValuedParameters):
             newPath.addTransitionLocation(ta, nt)
             lastLocationCount = len(list(filter(lambda a: a == nt.target, newPath.locations)))
             if lastLocationCount == 3:
+                log.info(f"\tLast location appears three times. Will skip the path:")
+                newPath.logDetails()
                 continue
             pathList.append(newPath)
     log.info("PTA can be made safe")
