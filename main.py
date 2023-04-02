@@ -139,8 +139,9 @@ class Path:
 
         if reportMinCycles and len(self.cycleCounters) > 0:
             cost = Real('cost') # a little faster than Int
+            # "* 1.0" and "0 +" somehow fixes the result
             tmp = map(lambda a: f"{a} * 1.0", self.cycleCounters)
-            costEq = f"cost == 0 + {'+'.join(tmp)}" # adding a 0 somehow fixes the result
+            costEq = f"cost == 0 + {'+'.join(tmp)}"
             s.add(eval(costEq))
 
             h = s.minimize(cost)
@@ -182,6 +183,7 @@ class Path:
         qeArgs = str.join(", ", firstDelayNames + averageDelayNames + delayNames + self.cycleCounters)
         quantifiedDelayConstraint = f"Not(Exists([{qeArgs}], {joinedAssertions}))"
         g.add(eval(quantifiedDelayConstraint))
+        log.debug(f"\tQuantified Constraint: {quantifiedDelayConstraint}")
 
         qeResult = t.apply(g)
         delayEliminatedConstraint = qeResult.as_expr()
@@ -192,6 +194,7 @@ class Path:
         log.info("\tDelays are eliminated from the constraints of the unsafe path.")
         if len(self.cycleCounters) == 0:
             delayEliminatedConstraint = self.__toDnf(delayEliminatedConstraint, ta.parameters)
+        log.debug(f"\tNew Restrictions: {delayEliminatedConstraint}")
 
         restrictions.append(delayEliminatedConstraint)
 
@@ -306,6 +309,7 @@ class Path:
 
         nonresettingClocks = list(filter(lambda a: lastCycleResetIndices[a] == None, ta.clocks))
         if len(nonresettingClocks) == 0: # no need to run more cycles
+            log.info("All clocks get reset in the cycle, so nothing will happen by cycling more. Will not add the cyclic path")
             return None
         path = Path.copyFrom(self)
         path.cycleCounters.append(f"cc_{len(path.cycles)}")
