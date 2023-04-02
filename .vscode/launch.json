@@ -32,13 +32,22 @@
             "args": ["-i", "./Examples/OperationLoop/OperationLoop.safety1.json", "-o", "OperationLoop.safety1.debug.log", "-d"]
         },
         {
-            "name": "PaperExample debug",
+            "name": "PaperExample Int params debug",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/main.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": ["-i", "./Examples/PaperExample/PaperExample.safety1.json", "-o", "PaperExample.safety1.debug.log", "-d"]
+        },
+        {
+            "name": "PaperExample Real params debug",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": ["-i", "./Examples/PaperExample/PaperExample.safety1.json", "-o", "PaperExample.safety1.realValuedParams.debug.log", "--realValuedParameters", "-d"]
         },
         {
             "name": "Train debug",

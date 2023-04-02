@@ -115,10 +115,10 @@ class Path:
             log.info("\t\t" + ', '.join(list(map(lambda a: str(a[0]) + " - " + str(a[1]), self.cycles))))
             log.info("\tCycle Counters:")
             log.info("\t\t" + str(self.cycleCounters))
-    def isFeasible(self, ta, restrictions, reportMinCycles = False):
+    def isFeasible(self, ta, restrictions, reportMinCycles, realValuedParameters):
         log.info(f"Checking feasibility of the path")
         self.logDetails()
-        self.__initDecisionVariables(ta, Int)
+        self.__initDecisionVariables(ta, Int, realValuedParameters)
 
         delayNames = [f"d{i}_{x}" for i,x in enumerate(self.locations)]
         s = Optimize()
@@ -143,8 +143,11 @@ class Path:
 
         if reportMinCycles and len(self.cycleCounters) > 0:
             cost = Real('cost') # a little faster than Int
-            # "* 1.0" and "0 +" somehow fixes the result
-            tmp = map(lambda a: f"{a} * 1.0", self.cycleCounters)
+            # "* 0.1", "* 1.0" and "0 +" somehow fixes the result
+            if realValuedParameters:
+                tmp = map(lambda a: f"{a} * 0.1", self.cycleCounters)
+            else:
+                tmp = map(lambda a: f"{a} * 1.0", self.cycleCounters)
             costEq = f"cost == 0 + {'+'.join(tmp)}"
             s.add(eval(costEq))
 
@@ -167,9 +170,9 @@ class Path:
         return False
     def getNextTransitions(self, ta):
         return list(filter(lambda a: a.source == self.locations[-1], ta.transitions))
-    def makeInfeasible(self, ta, restrictions):
+    def makeInfeasible(self, ta, restrictions, realValuedParameters):
         log.info("\tTrying to make the path infeasible")
-        self.__initDecisionVariables(ta, Real)
+        self.__initDecisionVariables(ta, Real, realValuedParameters)
         g = Goal()
         t = Tactic('qe')
         if len(self.cycleCounters) > 0:
@@ -203,12 +206,12 @@ class Path:
         restrictions.append(delayEliminatedConstraint)
 
         log.info("\tVerifying unsafe path's infeasibility with the new restriction.")
-        if self.isFeasible(ta, restrictions) == True: # path is still feasible!
+        if self.isFeasible(ta, restrictions, False, realValuedParameters) == True: # path is still feasible!
             log.info(f"\tShould not fall here! Found constraints cannot make the unsafe path infeasible!")
             return False
 
         log.info("\tChecking updated restrictions list does not yield an empty parameter valuation.")
-        if solveParametricConstraints(ta.parameters, restrictions, []) == False:
+        if solveParametricConstraints(ta.parameters, restrictions, [], realValuedParameters) == False:
             log.info(f"\tThere is not a parameter valuation satisfying the new constraints.")
             return False
         
@@ -254,7 +257,7 @@ class Path:
                 log.info(f"\tUnsatisfiable term in DNF: {dnf.arg(i)}")
                 unsat = unsat + 1
         log.info(f"\tDNF has {unsat}/{dnf.num_args()} unsatisfiable terms\n")
-    def __initDecisionVariables(self, ta, cycleCounterType):
+    def __initDecisionVariables(self, ta, cycleCounterType, realValuedParameters):
         for d in Path._decisionVariables:
             if d in globals():
                 del globals()[d]
@@ -278,9 +281,14 @@ class Path:
             for c in self.cycleCounters:
                 Path._decisionVariables.append(c)
                 globals()[c] = Real(c)
-        for p in ta.parameters:
-            Path._decisionVariables.append(p.name)
-            globals()[p.name] = Int(p.name)
+        if realValuedParameters:
+            for p in ta.parameters:
+                Path._decisionVariables.append(p.name)
+                globals()[p.name] = Real(p.name)
+        else:
+            for p in ta.parameters:
+                Path._decisionVariables.append(p.name)
+                globals()[p.name] = Int(p.name)
     def __getConstraintType(self, constraint, index, resetIndices):
         if ">" in constraint:
             args = constraint.split(">")
@@ -409,17 +417,17 @@ class Path:
 
 ###################################################################################
 
-def solveSafetyProblem(ta, spec, reportMinCycles):
+def solveSafetyProblem(ta, spec, reportMinCycles, realValuedParameters):
     log.info(f'Solving problem "{spec.name}" on TA "{ta.name}"')
     initialPath = Path.getInitialPath(ta)
     pathList = [initialPath]
     restrictions = []
     while len(pathList) > 0:
         path = pathList.pop()
-        if path.isFeasible(ta, restrictions, reportMinCycles) == False:
+        if path.isFeasible(ta, restrictions, reportMinCycles, realValuedParameters) == False:
             continue
         if path.endsInUnsafeLocation(spec):
-            infeasibleMakingConstraint = path.makeInfeasible(ta, restrictions)
+            infeasibleMakingConstraint = path.makeInfeasible(ta, restrictions, realValuedParameters)
             if infeasibleMakingConstraint == False:
                 log.info(f"PTA cannot be made safe")
                 return
@@ -443,17 +451,17 @@ def solveSafetyProblem(ta, spec, reportMinCycles):
             pathList.append(newPath)
     log.info("PTA can be made safe")
     # log.info(f"PTA can be made safe with the following restrictions:\n{restrictions}")
-    solveParametricConstraints(ta.parameters, restrictions, spec.costCoefficients)
+    solveParametricConstraints(ta.parameters, restrictions, spec.costCoefficients, realValuedParameters)
     return
 
-def solveParametricConstraints(taParameters, restrictions, costCoefficients):
+def solveParametricConstraints(taParameters, restrictions, costCoefficients, realValuedParameters):
         log.info("Checking for the optimum solution")
         s = Optimize()
-
+        paramType = Real if realValuedParameters else Int
         for p in taParameters:
             if p.name in globals():
                 del globals()[p.name]
-            globals()[p.name] = Int(p.name)
+            globals()[p.name] = paramType(p.name)
             s.add(eval(f"{p.name} >= {p.lowerBound}"))
             s.add(eval(f"{p.name} <= {p.upperBound}"))
         s.add(restrictions)
@@ -485,7 +493,7 @@ def solveParametricConstraints(taParameters, restrictions, costCoefficients):
 def replaceFullWord(str, search, replace):
     return re.sub(r"\b" + search + r"\b", replace, str)
 
-def solve(specPath, reportMinCycles):
+def solve(specPath, reportMinCycles, realValuedParameters):
     with open(specPath) as input_file:
         spec = json.load(input_file, object_hook=lambda d: SimpleNamespace(**d))
     with open(os.path.join(os.path.dirname(specPath), spec.taPath)) as input_file:
@@ -500,7 +508,7 @@ def solve(specPath, reportMinCycles):
                 if hasattr(sp, 'upperBound'):
                     ap.upperBound = sp.upperBound
     if spec.type == "safety":
-        solveSafetyProblem(ta, spec, reportMinCycles)
+        solveSafetyProblem(ta, spec, reportMinCycles, realValuedParameters)
     return
 
 if __name__ == '__main__':
@@ -516,6 +524,7 @@ if __name__ == '__main__':
         dest="outputPath",
         required=False)
     parser.add_argument('--reportMinCycles', action=argparse.BooleanOptionalAction)
+    parser.add_argument('--realValuedParameters', action=argparse.BooleanOptionalAction)
     parser.add_argument(
         '-d', '--debug',
         help="Print debugging statements",
@@ -539,4 +548,4 @@ if __name__ == '__main__':
         datefmt='%H:%M:%S',
         filemode='w'
     )
-    solve(args.inputPath, args.reportMinCycles)
+    solve(args.inputPath, args.reportMinCycles, args.realValuedParameters)
