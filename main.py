@@ -508,9 +508,7 @@ if __name__ == '__main__':
 
     if os.path.isdir("logs") == False:
         os.makedirs("logs")
-
-    args.inputPath = "./Examples/OperationLoop/OperationLoop.safety1.json"
-    args.outputPath = "out.log"
+    
     log.basicConfig(
         level=args.loglevel,
         filename=os.path.join("logs", args.outputPath or (os.path.basename(args.inputPath) + ".log")),

@@ -1,0 +1,16 @@
+{
+    "taPath": "PaperExample.ta.json",
+    "name": "Safe from L6 and L7",
+    "type": "safety",
+    "locations": ["L6", "L7"],
+    "costCoefficients": [
+        {"name": "p", "value": 1},
+        {"name": "q", "value": 2},
+        {"name": "r", "value": 3}
+    ],
+    "parameters": [
+        {"name": "p1", "lowerBound": 1, "upperBound": 10},
+        {"name": "q2", "lowerBound": 5, "upperBound": 15},
+        {"name": "r3", "lowerBound": 5, "upperBound": 15}
+    ]
+}
