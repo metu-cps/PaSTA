@@ -170,12 +170,16 @@ class Path:
         if len(self.cycleCounters) > 0:
             t = With(t, qe_nonlinear=True)
 
+        firstDelayNames = []
+        averageDelayNames = []
+        for c in self.cycles:
+            for i in range(c[0], c[1] + 1):
+                firstDelayNames.append(f"f{i}_{self.locations[i]}")
+                averageDelayNames.append(f"a{i}_{self.locations[i]}")
         delayNames = [f"d{i}_{x}" for i,x in enumerate(self.locations)]
+        joinedAssertions = "And(" + str.join(", ", self.assertions) + ")"
         
-        assertionsWithDelays = list(filter(lambda a: bool(re.match(r".*d\d+_", a)), self.assertions))
-        joinedAssertions = "And(" + str.join(", ", assertionsWithDelays) + ")"
-        
-        qeArgs = str.join(", ", delayNames + self.cycleCounters)
+        qeArgs = str.join(", ", firstDelayNames + averageDelayNames + delayNames + self.cycleCounters)
         quantifiedDelayConstraint = f"Not(Exists([{qeArgs}], {joinedAssertions}))"
         g.add(eval(quantifiedDelayConstraint))
 
