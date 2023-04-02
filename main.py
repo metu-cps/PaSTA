@@ -122,6 +122,10 @@ class Path:
 
         delayNames = [f"d{i}_{x}" for i,x in enumerate(self.locations)]
         s = Optimize()
+        for c in self.cycles:
+            for i in range(c[0], c[1] + 1):
+                s.add(eval(f"f{i}_{self.locations[i]} >= 0"))
+                s.add(eval(f"a{i}_{self.locations[i]} >= 0"))
         for d in delayNames:
             s.add(eval(f"{d} >= 0"))
 
