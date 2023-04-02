@@ -416,7 +416,7 @@ def solveSafetyProblem(ta, spec, reportMinCycles):
             continue
         if path.endsInUnsafeLocation(spec):
             infeasibleMakingConstraint = path.makeInfeasible(ta, restrictions)
-            if infeasibleMakingConstraint == None:
+            if infeasibleMakingConstraint == False:
                 log.info(f"PTA cannot be made safe")
                 return
             restrictions.append(infeasibleMakingConstraint)
