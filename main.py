@@ -98,7 +98,7 @@ class Path:
             log.info("\t\t" + self.locations[0])
         elif len(self.locations) == len(self.transitions) + 1:
             log.info("\t\t" + ' - '.join(self.locations[i] + " - " + self.transitions[i].action for i,a in enumerate(self.transitions)) + ' - ' + self.locations[-1])
-        log.info("\tClock Values:")
+        log.debug("\tClock Values:")
         for i,loc in enumerate(self.locations):
             infoLine = f"\t\t{loc}\n\t\t\tin: {self.clockValues[i]['in']}\n\t\t\tout: {self.clockValues[i]['out']}"
             if "lb-in" in self.clockValues[i]:
@@ -107,14 +107,14 @@ class Path:
                 infoLine += f"\n\t\t\treset-in-f: {self.clockValues[i]['reset-in-f']}\n\t\t\treset-out-f: {self.clockValues[i]['reset-out-f']}"
                 infoLine += f"\n\t\t\treset-in-a: {self.clockValues[i]['reset-in-a']}\n\t\t\treset-out-a: {self.clockValues[i]['reset-out-a']}"
                 infoLine += f"\n\t\t\treset-in-l: {self.clockValues[i]['reset-in-l']}\n\t\t\treset-out-l: {self.clockValues[i]['reset-out-l']}"
-            log.info(infoLine)
-        log.info("\tAssertions:")
-        log.info(f'\t\t{"And(" + str.join(", ", self.assertions) + ")"}')
+            log.debug(infoLine)
+        log.debug("\tAssertions:")
+        log.debug(f'\t\t{"And(" + str.join(", ", self.assertions) + ")"}')
         if len(self.cycleCounters) > 0:
             log.info("\tCycle Indices:")
             log.info("\t\t" + ', '.join(list(map(lambda a: str(a[0]) + " - " + str(a[1]), self.cycles))))
-            log.info("\tCycle Counters:")
-            log.info("\t\t" + str(self.cycleCounters))
+            log.debug("\tCycle Counters:")
+            log.debug("\t\t" + str(self.cycleCounters))
     def isFeasible(self, ta, restrictions, reportMinCycles, realValuedParameters):
         log.info(f"Checking feasibility of the path")
         self.logDetails()
@@ -158,7 +158,8 @@ class Path:
             c = s.check()
 
         if c.r == 1:
-            log.info(f"\tPath is feasible. A model is : {s.model()}")
+            m = s.model()
+            log.info(f"\tPath is feasible. A model is : {m}")
             return True
         else:
             log.info("Path is infeasible")
@@ -450,9 +451,11 @@ def solveSafetyProblem(ta, spec, reportMinCycles, realValuedParameters):
                 log.info(f"\tLast location appears three times. Will skip the path:")
                 newPath.logDetails()
                 continue
+            log.info(f"Adding path")
+            newPath.logDetails()
             pathList.append(newPath)
     log.info("PTA can be made safe")
-    # log.info(f"PTA can be made safe with the following restrictions:\n{restrictions}")
+    log.debug(f"PTA can be made safe with the following restrictions:\n{restrictions}")
     solveParametricConstraints(ta.parameters, restrictions, spec.costCoefficients, realValuedParameters)
     return
 
