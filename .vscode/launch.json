@@ -38,7 +38,7 @@
             "program": "${workspaceFolder}/main.py",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["-i", "./Examples/PaperExample/PaperExample.safety1.json", "-o", "PaperExample.safety1.debug.log", "-d"]
+            "args": ["-i", "./Examples/PaperExample/PaperExample.safety1.json", "-o", "PaperExample.safety1.debug.log", "--reportMinCycles", "-d"]
         },
         {
             "name": "PaperExample Real params debug",
@@ -47,7 +47,7 @@
             "program": "${workspaceFolder}/main.py",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["-i", "./Examples/PaperExample/PaperExample.safety1.json", "-o", "PaperExample.safety1.realValuedParams.debug.log", "--realValuedParameters", "-d"]
+            "args": ["-i", "./Examples/PaperExample/PaperExample.safety1.json", "-o", "PaperExample.safety1.realValuedParams.debug.log", "--realValuedParameters", "--reportMinCycles", "-d"]
         },
         {
             "name": "Train debug",

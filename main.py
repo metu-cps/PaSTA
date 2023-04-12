@@ -1,6 +1,7 @@
 import argparse
 import json
 import logging as log
+from multiprocessing import Pipe, Process
 import os
 import re
 from types import SimpleNamespace
@@ -131,6 +132,9 @@ class Path:
 
         for c in self.cycleCounters:
             s.add(eval(f"{c} >= 0"))
+        if reportMinCycles and len(self.cycleCounters) > 0:
+            cost = Real('cost')
+            s.add(eval("cost >= 0")) # keep here
 
         for p in ta.parameters:
             s.add(eval(f"{p.name} >= {p.lowerBound}"))
@@ -142,28 +146,36 @@ class Path:
             s.add(r)
 
         if reportMinCycles and len(self.cycleCounters) > 0:
-            cost = Real('cost') # a little faster than Int
-            # "* 0.1", "* 1.0" and "0 +" somehow fixes the result
-            if realValuedParameters:
-                tmp = map(lambda a: f"{a} * 0.1", self.cycleCounters)
-            else:
-                tmp = map(lambda a: f"{a} * 1.0", self.cycleCounters)
-            costEq = f"cost == 0 + {'+'.join(tmp)}"
-            s.add(eval(costEq))
+            s.add(eval(f"cost == {'+'.join(self.cycleCounters)}"))
 
             h = s.minimize(cost)
             c = s.check()
             s.lower(h)
+
+            parent_conn, child_conn = Pipe()  # default is duplex!
+            optimize_process = Process(target=optimize, args=(child_conn,))
+            optimize_process.start()
+
+            writer(parent_conn, str(s))
+
+            for result in iter(parent_conn.recv, SENTINEL):
+                log.debug(f'optimize_process returned {result}')
+
+            parent_conn.close()
+            optimize_process.join()
+            if result[0] == True:
+                log.info(f"\tPath is feasible. A model is : {result[1]}")
+                log.debug(s)
+                return True
         else:
             c = s.check()
-
-        if c.r == 1:
-            m = s.model()
-            log.info(f"\tPath is feasible. A model is : {m}")
-            return True
-        else:
-            log.info("Path is infeasible")
-            return False
+            if c.r == 1:
+                m = s.model()
+                log.info(f"\tPath is feasible. A model is : {m}")
+                log.debug(s)
+                return True
+        log.info("Path is infeasible")
+        return False
     def endsInUnsafeLocation(self, spec):
         if self.locations[-1] in spec.locations:
             log.info(f"\tPath ends in the unsafe location {self.locations[-1]}")
@@ -483,16 +495,26 @@ def solveParametricConstraints(taParameters, restrictions, costCoefficients, rea
         h = s.minimize(cost)
         c = s.check()
         s.lower(h)
-        m = s.model()
 
-        if c.r != 1:
+        parent_conn, child_conn = Pipe()  # default is duplex!
+        optimize_process = Process(target=optimize, args=(child_conn,))
+        optimize_process.start()
+
+        writer(parent_conn, str(s))
+
+        for result in iter(parent_conn.recv, SENTINEL):
+            log.debug(f'optimize_process returned {result}')
+
+        parent_conn.close()
+        optimize_process.join()
+        if result[0] == False:
             log.info("\tOverall Result: Not feasible")
             return False
 
         parameterValuation = []
         for p in taParameters:
-            parameterValuation.append(f"{p.name}: {m[eval(p.name)]}")
-        log.info(f"\tOverall Result: Feasible with score ({m[cost]}) and values {', '.join(parameterValuation)}")
+            parameterValuation.append(f"{p.name}: {result[1]}")
+        log.info(f"\tOverall Result: Feasible. Cost and parameter values are: {result[1]}")
         return True
 
 def replaceFullWord(str, search, replace):
@@ -515,6 +537,30 @@ def solve(specPath, reportMinCycles, realValuedParameters):
     if spec.type == "safety":
         solveSafetyProblem(ta, spec, reportMinCycles, realValuedParameters)
     return
+
+SENTINEL = 'SENTINEL'
+def optimize(child_conn):
+    result = []
+    for smtStr in iter(child_conn.recv, SENTINEL):
+        smt = z3.parse_smt2_string(smtStr)
+        s = Optimize()
+        cost = Real("cost")
+        s.add(smt)
+        h = s.minimize(cost)
+        c = s.check()
+        if c.r == 1:
+            result.append(True)
+            s.lower(h)
+            m = s.model()
+            result.append(str(m))
+        else:
+            result.append(False)
+    writer(child_conn, result)
+    child_conn.close()
+
+def writer(conn, data):
+    conn.send(data)
+    conn.send(SENTINEL)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
