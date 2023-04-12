@@ -14,13 +14,22 @@
             "args": ["-i", "./Examples/NoodlesCooking/NoodlesCooking.safety1.json", "-o", "NoodlesCooking.safety1.debug.log", "-d"]
         },
         {
-            "name": "NuclearPlant debug",
+            "name": "NuclearPlant Int params debug",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/main.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": ["-i", "./Examples/NuclearPlant/NuclearPlant.safety1.json", "-o", "NuclearPlant.safety1.debug.log", "-d"]
+        },
+        {
+            "name": "NuclearPlant Real params debug",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": ["-i", "./Examples/NuclearPlant/NuclearPlant.safety1.json", "-o", "NuclearPlant.safety1.realValuedParams.debug.log", "--realValuedParameters", "-d"]
         },
         {
             "name": "OperationLoop debug",

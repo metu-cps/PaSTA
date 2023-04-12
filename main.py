@@ -372,14 +372,14 @@ class Path:
                     path.clockValues[i]["ub-in"][x] = xValArrive
                     path.clockValues[i]["ub-out"][x] = xValLeave
                 else:
-                    xValArriveF = [a.replace("d", "f") for a in path.clockValues[i]["in"][x]]
-                    xValArriveA = [a.replace("d", "a") for a in path.clockValues[i]["in"][x]]
+                    xValArriveF = [a.replace("_d", "_f") for a in path.clockValues[i]["in"][x]]
+                    xValArriveA = [a.replace("_d", "_a") for a in path.clockValues[i]["in"][x]]
                     xValArriveA = list(filter(lambda a: a in averageDelays, xValArriveA))
-                    xValArriveL = [a.replace("a", "d") for a in xValArriveA]
-                    xValLeaveF = [a.replace("d", "f") for a in path.clockValues[i]["out"][x]]
-                    xValLeaveA = [a.replace("d", "a") for a in path.clockValues[i]["out"][x]]
+                    xValArriveL = [a.replace("_a", "_d") for a in xValArriveA]
+                    xValLeaveF = [a.replace("_d", "_f") for a in path.clockValues[i]["out"][x]]
+                    xValLeaveA = [a.replace("_d", "_a") for a in path.clockValues[i]["out"][x]]
                     xValLeaveA = list(filter(lambda a: a in averageDelays, xValLeaveA))
-                    xValLeaveL = [a.replace("a", "d") for a in xValLeaveA]
+                    xValLeaveL = [a.replace("_a", "_d") for a in xValLeaveA]
                     path.clockValues[i]["reset-in-f"][x] = xValArriveF
                     path.clockValues[i]["reset-in-a"][x] = xValArriveA
                     path.clockValues[i]["reset-in-l"][x] = xValArriveL
