@@ -1,11 +1,9 @@
 import argparse
 import json
 import logging as log
-from multiprocessing import Pipe, Process
 import os
 import re
 from types import SimpleNamespace
-import logging as log
 from z3 import *
 
 
@@ -16,6 +14,7 @@ class Path:
         self.transitions = []
         self.clockValues = []
         self.assertions = []
+        self.cycleLocations = []
         self.cycles = []
         self.cycleCounters = []
     @staticmethod
@@ -31,6 +30,7 @@ class Path:
         p.transitions = obj.transitions.copy() # internals not modified, no need to deep copy
         p.clockValues = Path.copyClockValues(obj.clockValues) # internals modified, need to deep copy
         p.assertions = obj.assertions.copy() # simple string list
+        p.cycleLocations = obj.cycleLocations.copy() # simple string list
         p.cycles = obj.cycles.copy() # simple list of list of two integers
         p.cycleCounters = obj.cycleCounters.copy() # simple string list
         return p
@@ -68,9 +68,10 @@ class Path:
     def __addLocation(self, ta, location):
         # consider the path l1, l2, l1, l2. only element in cycles should be [0, 1].
         # below check prevents [1, 2] from going into the cycles.
-        if location in self.locations:
-            if len(self.cycles) == 0 or self.cycles[-1][1] < self.locations.index(location):
-                self.cycles.append([self.locations.index(location), len(self.locations) - 1])
+        if location in self.locations and location not in self.cycleLocations:
+            self.cycles.append([self.locations.index(location), len(self.locations) - 1])
+            self.cycleLocations += self.locations[self.locations.index(location):]
+
         self.locations.append(location)
         arrivingLocationInv = next((a.constraints for a in ta.invariants if a.location == location), [])
         self.__addAssertionsFromConstraint(arrivingLocationInv, self.clockValues[-1]["in"])
@@ -119,63 +120,50 @@ class Path:
     def isFeasible(self, ta, restrictions, reportMinCycles, realValuedParameters):
         log.info(f"Checking feasibility of the path")
         self.logDetails()
-        self.__initDecisionVariables(ta, Int, realValuedParameters)
+        ctx = self.__initDecisionVariables(ta, Int, realValuedParameters)
 
         delayNames = [f"d{i}_{x}" for i,x in enumerate(self.locations)]
-        s = Optimize()
+        optimize = Optimize(ctx=ctx)
         for c in self.cycles:
             for i in range(c[0], c[1] + 1):
-                s.add(eval(f"f{i}_{self.locations[i]} >= 0"))
-                s.add(eval(f"a{i}_{self.locations[i]} >= 0"))
+                optimize.add(eval(f"f{i}_{self.locations[i]} >= 0"))
+                optimize.add(eval(f"a{i}_{self.locations[i]} >= 0"))
         for d in delayNames:
-            s.add(eval(f"{d} >= 0"))
+            optimize.add(eval(f"{d} >= 0"))
 
         for c in self.cycleCounters:
-            s.add(eval(f"{c} >= 0"))
+            optimize.add(eval(f"{c} >= 0"))
         if reportMinCycles and len(self.cycleCounters) > 0:
-            cost = Real('cost')
-            s.add(eval("cost >= 0")) # keep here
+            cost = Real('cost', ctx=ctx)
 
         for p in ta.parameters:
-            s.add(eval(f"{p.name} >= {p.lowerBound}"))
-            s.add(eval(f"{p.name} <= {p.upperBound}"))
+            optimize.add(eval(f"{p.name} >= {p.lowerBound}"))
+            optimize.add(eval(f"{p.name} <= {p.upperBound}"))
         
-        joinedAssertions = "And(" + str.join(", ", self.assertions) + ")"
-        s.add(eval(joinedAssertions))
+        if len(self.assertions) > 0:
+            joinedAssertions = "And(" + str.join(", ", self.assertions) + ")"
+            optimize.add(eval(joinedAssertions))
         for r in restrictions:
-            s.add(r)
+            if type(r) == bool:
+                optimize.add(r)
+            else:
+                optimize.add(r.translate(ctx))
 
         if reportMinCycles and len(self.cycleCounters) > 0:
-            s.add(eval(f"cost == {'+'.join(self.cycleCounters)}"))
-
-            h = s.minimize(cost)
-            c = s.check()
-            s.lower(h)
-
-            parent_conn, child_conn = Pipe()  # default is duplex!
-            optimize_process = Process(target=optimize, args=(child_conn,))
-            optimize_process.start()
-
-            writer(parent_conn, str(s))
-
-            for result in iter(parent_conn.recv, SENTINEL):
-                log.debug(f'optimize_process returned {result}')
-
-            parent_conn.close()
-            optimize_process.join()
-            if result[0] == True:
-                log.info(f"\tPath is feasible. A model is : {result[1]}")
-                log.debug(s)
-                return True
+            optimize.add(eval(f"cost == {'+'.join(self.cycleCounters)}"))
+            h = optimize.minimize(cost)
+            c = optimize.check()
+            optimize.lower(h)
         else:
-            c = s.check()
-            if c.r == 1:
-                m = s.model()
-                log.info(f"\tPath is feasible. A model is : {m}")
-                log.debug(s)
-                return True
-        log.info("Path is infeasible")
-        return False
+            c = optimize.check()
+
+        if c.r == 1:
+            m = optimize.model()
+            log.info(f"\tPath is feasible. A model is : {m}")
+            return True
+        else:
+            log.info("Path is infeasible")
+            return False
     def endsInUnsafeLocation(self, spec):
         if self.locations[-1] in spec.locations:
             log.info(f"\tPath ends in the unsafe location {self.locations[-1]}")
@@ -185,9 +173,9 @@ class Path:
         return list(filter(lambda a: a.source == self.locations[-1], ta.transitions))
     def makeInfeasible(self, ta, restrictions, realValuedParameters):
         log.info("\tTrying to make the path infeasible")
-        self.__initDecisionVariables(ta, Real, realValuedParameters)
-        g = Goal()
-        t = Tactic('qe')
+        ctx = self.__initDecisionVariables(ta, Real, realValuedParameters)
+        goal = Goal(ctx=ctx)
+        t = Tactic('qe', ctx=ctx)
         if len(self.cycleCounters) > 0:
             t = With(t, qe_nonlinear=True)
 
@@ -202,10 +190,10 @@ class Path:
         
         qeArgs = str.join(", ", firstDelayNames + averageDelayNames + delayNames + self.cycleCounters)
         quantifiedDelayConstraint = f"Not(Exists([{qeArgs}], {joinedAssertions}))"
-        g.add(eval(quantifiedDelayConstraint))
+        goal.add(eval(quantifiedDelayConstraint))
         log.debug(f"\tQuantified Constraint: {quantifiedDelayConstraint}")
 
-        qeResult = t.apply(g)
+        qeResult = t.apply(goal)
         delayEliminatedConstraint = qeResult.as_expr()
         if delayEliminatedConstraint == False:
             log.info("\tDelays could not be eliminated from the constraints of the unsafe path. Cannot make the path infeasible. PTA cannot be made safe.")
@@ -213,7 +201,7 @@ class Path:
 
         log.info("\tDelays are eliminated from the constraints of the unsafe path.")
         if len(self.cycleCounters) == 0:
-            delayEliminatedConstraint = self.__toDnf(delayEliminatedConstraint, ta.parameters)
+            delayEliminatedConstraint = self.__toDnf(delayEliminatedConstraint, ta.parameters, ctx)
         log.debug(f"\tNew Restrictions: {delayEliminatedConstraint}")
 
         restrictions.append(delayEliminatedConstraint)
@@ -230,15 +218,15 @@ class Path:
         
         log.info(f"\tCan make the unsafe path infeasible. New restrictions are: {restrictions}")
         return True
-    def __toCnf(self, constraint):
-        t = Then(With('simplify', elim_and=True, elim_to_real=True), 'elim-term-ite', 'tseitin-cnf')
-        g = Goal()
+    def __toCnf(self, constraint, ctx):
+        t = Then(With('simplify', elim_and=True, elim_to_real=True, ctx=ctx), 'elim-term-ite', 'tseitin-cnf', ctx=ctx)
+        g = Goal(ctx=ctx)
         g.add(constraint)
         return t.apply(g).as_expr()
-    def __simplifyCnf(self, cnf, taParameters):
+    def __simplifyCnf(self, cnf, taParameters, ctx):
         try:
             t = Then('simplify', 'propagate-values', ParThen('split-clause', 'propagate-ineqs'), 'simplify', 'ctx-simplify')
-            g = Goal()
+            g = Goal(ctx=ctx)
             g.add(cnf)
             for i in range(0, len(taParameters)):
                 g.add(eval(f"{taParameters[i].name} >= {taParameters[i].lowerBound}"))
@@ -247,23 +235,23 @@ class Path:
             return simplifiedCnf
         except:
             return cnf
-    def __toDnf(self, constraint, taParameters):
+    def __toDnf(self, constraint, taParameters, ctx):
         # return constraint
-        cnf = self.__toCnf(constraint)
-        simplifiedCnf = self.__simplifyCnf(cnf, taParameters)
+        cnf = self.__toCnf(constraint, ctx)
+        simplifiedCnf = self.__simplifyCnf(cnf, taParameters, ctx)
         # return simplifiedCnf #todo
-        t = Then(Tactic('simplify'), 'fm', Repeat(OrElse(Then('split-clause', 'simplify', 'solve-eqs', 'ctx-simplify', 'ctx-solver-simplify'), Tactic('skip'))))
-        g = Goal()
+        t = Then(Tactic('simplify', ctx=ctx), 'fm', Repeat(OrElse(Then('split-clause', 'simplify', 'solve-eqs', 'ctx-simplify', 'ctx-solver-simplify', ctx=ctx), Tactic('skip', ctx=ctx), ctx=ctx), ctx=ctx), ctx=ctx)
+        g = Goal(ctx=ctx)
         g.add(simplifiedCnf)
         dnf = t.apply(g).as_expr()
-        self._checkUnsatDnfTerms(dnf)
+        self._checkUnsatDnfTerms(dnf, ctx)
         return dnf
-    def _checkUnsatDnfTerms(self, dnf):
+    def _checkUnsatDnfTerms(self, dnf, ctx):
         unsat = 0
         for i in range(dnf.num_args()):
-            g = Goal()
+            g = Goal(ctx=ctx)
             g.add(dnf.arg(i))
-            s = Solver()
+            s = Solver(ctx=ctx)
             s.add(g)
             c = s.check()
             if c.r != 1:
@@ -271,43 +259,47 @@ class Path:
                 unsat = unsat + 1
         log.info(f"\tDNF has {unsat}/{dnf.num_args()} unsatisfiable terms\n")
     def __initDecisionVariables(self, ta, cycleCounterType, realValuedParameters):
+        ctx = Context()
         for d in Path._decisionVariables:
             if d in globals():
                 del globals()[d]
         delayNames = [f"d{i}_{x}" for i,x in enumerate(self.locations)]
         for d in delayNames:
             Path._decisionVariables.append(d)
-            globals()[d] = Real(d)
+            globals()[d] = Real(d,ctx=ctx)
         firstDelayNames = [f"f{i}_{self.locations[i]}" for cycle in self.cycles for i in range(cycle[0], cycle[1]+1)]
         averageDelayNames = [f"a{i}_{self.locations[i]}" for cycle in self.cycles for i in range(cycle[0], cycle[1]+1)]
         for d in firstDelayNames:
             Path._decisionVariables.append(d)
-            globals()[d] = Real(d)
+            globals()[d] = Real(d,ctx=ctx)
         for d in averageDelayNames:
             Path._decisionVariables.append(d)
-            globals()[d] = Real(d)
+            globals()[d] = Real(d,ctx=ctx)
         if cycleCounterType == Int:
             for c in self.cycleCounters:
                 Path._decisionVariables.append(c)
-                globals()[c] = Int(c)
+                globals()[c] = Int(c,ctx=ctx)
         else:
             for c in self.cycleCounters:
                 Path._decisionVariables.append(c)
-                globals()[c] = Real(c)
+                globals()[c] = Real(c,ctx=ctx)
         if realValuedParameters:
             for p in ta.parameters:
                 Path._decisionVariables.append(p.name)
-                globals()[p.name] = Real(p.name)
+                globals()[p.name] = Real(p.name,ctx=ctx)
         else:
             for p in ta.parameters:
                 Path._decisionVariables.append(p.name)
-                globals()[p.name] = Int(p.name)
+                globals()[p.name] = Int(p.name,ctx=ctx)
+        return ctx
     def __getConstraintType(self, constraint, index, resetIndices):
         if ">" in constraint:
             args = constraint.split(">")
-        else:
+        elif "<" in constraint:
             args = constraint.split("<")
             args.reverse()
+        else:
+            raise ValueError("Unsupported automaton. Equals check in constraints.") 
         for x in resetIndices:
             if x in args[0] and resetIndices[x] == None:
                 return 1, x
@@ -372,14 +364,14 @@ class Path:
                     path.clockValues[i]["ub-in"][x] = xValArrive
                     path.clockValues[i]["ub-out"][x] = xValLeave
                 else:
-                    xValArriveF = [a.replace("_d", "_f") for a in path.clockValues[i]["in"][x]]
-                    xValArriveA = [a.replace("_d", "_a") for a in path.clockValues[i]["in"][x]]
+                    xValArriveF = [re.sub(r'^d', 'f', a) for a in path.clockValues[i]["in"][x]]
+                    xValArriveA = [re.sub(r'^d', 'a', a) for a in path.clockValues[i]["in"][x]]
                     xValArriveA = list(filter(lambda a: a in averageDelays, xValArriveA))
-                    xValArriveL = [a.replace("_a", "_d") for a in xValArriveA]
-                    xValLeaveF = [a.replace("_d", "_f") for a in path.clockValues[i]["out"][x]]
-                    xValLeaveA = [a.replace("_d", "_a") for a in path.clockValues[i]["out"][x]]
+                    xValArriveL = [re.sub(r'^a', 'd', a) for a in xValArriveA]
+                    xValLeaveF = [re.sub(r'^d', 'f', a) for a in path.clockValues[i]["out"][x]]
+                    xValLeaveA = [re.sub(r'^d', 'a', a) for a in path.clockValues[i]["out"][x]]
                     xValLeaveA = list(filter(lambda a: a in averageDelays, xValLeaveA))
-                    xValLeaveL = [a.replace("_a", "_d") for a in xValLeaveA]
+                    xValLeaveL = [re.sub(r'^a', 'd', a) for a in xValLeaveA]
                     path.clockValues[i]["reset-in-f"][x] = xValArriveF
                     path.clockValues[i]["reset-in-a"][x] = xValArriveA
                     path.clockValues[i]["reset-in-l"][x] = xValArriveL
@@ -473,17 +465,22 @@ def solveSafetyProblem(ta, spec, reportMinCycles, realValuedParameters):
 
 def solveParametricConstraints(taParameters, restrictions, costCoefficients, realValuedParameters):
         log.info("Checking for the optimum solution")
-        s = Optimize()
+        ctx = Context()
+        s = Optimize(ctx=ctx)
         paramType = Real if realValuedParameters else Int
         for p in taParameters:
             if p.name in globals():
                 del globals()[p.name]
-            globals()[p.name] = paramType(p.name)
+            globals()[p.name] = paramType(p.name,ctx=ctx)
             s.add(eval(f"{p.name} >= {p.lowerBound}"))
             s.add(eval(f"{p.name} <= {p.upperBound}"))
-        s.add(restrictions)
+        for r in restrictions:
+            if type(r) == bool:
+                s.add(r)
+            else:
+                s.add(r.translate(ctx))
 
-        cost = Real('cost')
+        cost = Real('cost', ctx)
         costArgs = ["0"]
         for p in taParameters:
             cc = next(filter(lambda a: a.name == p.name, costCoefficients), None)
@@ -495,26 +492,16 @@ def solveParametricConstraints(taParameters, restrictions, costCoefficients, rea
         h = s.minimize(cost)
         c = s.check()
         s.lower(h)
+        m = s.model()
 
-        parent_conn, child_conn = Pipe()  # default is duplex!
-        optimize_process = Process(target=optimize, args=(child_conn,))
-        optimize_process.start()
-
-        writer(parent_conn, str(s))
-
-        for result in iter(parent_conn.recv, SENTINEL):
-            log.debug(f'optimize_process returned {result}')
-
-        parent_conn.close()
-        optimize_process.join()
-        if result[0] == False:
+        if c.r != 1:
             log.info("\tOverall Result: Not feasible")
             return False
 
         parameterValuation = []
         for p in taParameters:
-            parameterValuation.append(f"{p.name}: {result[1]}")
-        log.info(f"\tOverall Result: Feasible. Cost and parameter values are: {result[1]}")
+            parameterValuation.append(f"{p.name}: {m[eval(p.name)]}")
+        log.info(f"\tOverall Result: Feasible with score ({m[cost]}) and values {', '.join(parameterValuation)}")
         return True
 
 def replaceFullWord(str, search, replace):
@@ -537,30 +524,6 @@ def solve(specPath, reportMinCycles, realValuedParameters):
     if spec.type == "safety":
         solveSafetyProblem(ta, spec, reportMinCycles, realValuedParameters)
     return
-
-SENTINEL = 'SENTINEL'
-def optimize(child_conn):
-    result = []
-    for smtStr in iter(child_conn.recv, SENTINEL):
-        smt = z3.parse_smt2_string(smtStr)
-        s = Optimize()
-        cost = Real("cost")
-        s.add(smt)
-        h = s.minimize(cost)
-        c = s.check()
-        if c.r == 1:
-            result.append(True)
-            s.lower(h)
-            m = s.model()
-            result.append(str(m))
-        else:
-            result.append(False)
-    writer(child_conn, result)
-    child_conn.close()
-
-def writer(conn, data):
-    conn.send(data)
-    conn.send(SENTINEL)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
