@@ -3,9 +3,57 @@ import json
 import logging as log
 import os
 import re
+import timeit
 from types import SimpleNamespace
 from z3 import *
 
+
+class Stats:
+  def __init__(self):
+    self.linearFeasibilityCheckCount = 0
+    self.linearFeasibilityCheckParameterCount = 0
+    self.linearFeasibilityCheckDelayCount = 0
+    self.linearFeasibilityCheckTime = 0
+    self.nonlinearFeasibilityCheckCount = 0
+    self.nonlinearFeasibilityCheckParameterCount = 0
+    self.nonlinearFeasibilityCheckDelayCount = 0
+    self.nonlinearFeasibilityCheckCycleCount = 0
+    self.nonlinearFeasibilityCheckTime = 0
+    self.linearInfeasiblePathCount = 0
+    self.linearFeasiblePathCount = 0
+    self.linearFeasibleUnsafePathCount = 0
+    self.nonlinearInfeasiblePathCount = 0
+    self.nonlinearFeasiblePathCount = 0
+    self.nonlinearFeasibleUnsafePathCount = 0
+    self.linearQeParameterCount = 0
+    self.linearQeDelayCount = 0
+    self.linearQeTime = 0
+    self.linearInfeasibilityVerificationTime = 0
+    self.nonlinearQeParameterCount = 0
+    self.nonlinearQeDelayCount = 0
+    self.nonlinearQeCycleCount = 0
+    self.nonlinearQeTime = 0
+    self.nonlinearInfeasibilityVerificationTime = 0
+    self.parameterExistenceVerificationTime = 0
+    self.total_time = 0
+  def to_str(self):
+    offset = self.linearFeasibilityCheckCount + self.nonlinearFeasibilityCheckCount + 4
+    str = "\n\tLinear\tNon-linear\n"
+    
+    str += f"FeasibilityCheckCount:\t{self.linearFeasibilityCheckCount}\t{self.nonlinearFeasibilityCheckCount}\t\tparameterExistenceVerificationTime:\t{self.parameterExistenceVerificationTime}\n"
+    str += f"FeasibilityCheckParameterCount:\t{self.linearFeasibilityCheckParameterCount}\t{self.nonlinearFeasibilityCheckParameterCount}\t\tTotal Z3 time\t=SUM(B{offset+4},C{offset+4},B{offset+11},C{offset+11},B{offset+12},C{offset+12},F{offset})\n"
+    str += f"FeasibilityCheckDelayCount:\t{self.linearFeasibilityCheckDelayCount}\t{self.nonlinearFeasibilityCheckDelayCount}\t\tNon Z3 time\t=F{offset+3}-F{offset+1}\n"
+    str += f"FeasibilityCheckCycleCount:\t-\t{self.nonlinearFeasibilityCheckCycleCount}\t\ttotal_time:\t{self.total_time}\n"
+    str += f"FeasibilityCheckTime:\t{self.linearFeasibilityCheckTime}\t{self.nonlinearFeasibilityCheckTime}\n"
+    str += f"InfeasiblePathCount:\t{self.linearInfeasiblePathCount}\t{self.nonlinearInfeasiblePathCount}\n"
+    str += f"FeasiblePathCount:\t{self.linearFeasiblePathCount}\t{self.nonlinearFeasiblePathCount}\n"
+    str += f"FeasibleUnsafePathCount:\t{self.linearFeasibleUnsafePathCount}\t{self.nonlinearFeasibleUnsafePathCount}\n"
+    str += f"QeParameterCount:\t{self.linearQeParameterCount}\t{self.nonlinearQeParameterCount}\n"
+    str += f"QeDelayCount:\t{self.linearQeDelayCount}\t{self.nonlinearQeDelayCount}\n"
+    str += f"nonlinearQeCycleCount:\t-\t{self.nonlinearQeCycleCount}\n"
+    str += f"QeTime:\t{self.linearQeTime}\t{self.nonlinearQeTime}\n"
+    str += f"InfeasibilityVerificationTime:\t{self.linearInfeasibilityVerificationTime}\t{self.nonlinearInfeasibilityVerificationTime}\n"
+    return str
 
 class Path:
     _decisionVariables = []
@@ -175,6 +223,7 @@ class Path:
     def getNextTransitions(self, ta):
         return list(filter(lambda a: a.source == self.locations[-1], ta.transitions))
     def makeInfeasible(self, ta, restrictions, realValuedParameters):
+        makeInfeasibleStart = timeit.default_timer()
         log.info("\tTrying to make the path infeasible")
         ctx = self.__initDecisionVariables(ta, Real, realValuedParameters)
         goal = Goal(ctx=ctx)
@@ -198,29 +247,48 @@ class Path:
 
         qeResult = t.apply(goal)
         delayEliminatedConstraint = qeResult.as_expr()
+        makeInfeasibleTime = timeit.default_timer() - makeInfeasibleStart
         if delayEliminatedConstraint == False:
             log.info("\tDelays could not be eliminated from the constraints of the unsafe path. Cannot make the path infeasible. PTA cannot be made safe.")
-            return False
+            return False, makeInfeasibleTime, None, None
 
         log.info("\tDelays are eliminated from the constraints of the unsafe path.")
         if len(self.cycleCounters) == 0:
+            ta_stats.linearQeParameterCount += len(ta.parameters)
+            ta_stats.linearQeDelayCount += len(self.locations)
+            ta_stats.linearQeTime += makeInfeasibleTime
             delayEliminatedConstraint = self.__toDnf(delayEliminatedConstraint, ta.parameters, ctx)
+        else:
+            ta_stats.nonlinearQeParameterCount += len(ta.parameters)
+            ta_stats.nonlinearQeDelayCount += len(self.locations)
+            ta_stats.nonlinearQeCycleCount += len(self.cycleCounters)
+            ta_stats.nonlinearQeTime += makeInfeasibleTime
         log.debug(f"\tNew Restrictions: {delayEliminatedConstraint}")
 
         restrictions.append(delayEliminatedConstraint)
 
         log.info("\tVerifying unsafe path's infeasibility with the new restriction.")
-        if self.isFeasible(ta, restrictions, False, realValuedParameters) == True: # path is still feasible!
+        verificationCheckStart = timeit.default_timer()
+        isFeasible = self.isFeasible(ta, restrictions, False, realValuedParameters)
+        verificationCheckTime = timeit.default_timer() - verificationCheckStart
+        if len(self.cycleCounters) == 0:
+            ta_stats.linearInfeasibilityVerificationTime += verificationCheckTime
+        else:
+            ta_stats.nonlinearInfeasibilityVerificationTime += verificationCheckTime
+        if isFeasible == True: # path is still feasible!
             log.info(f"\tShould not fall here! Found constraints cannot make the unsafe path infeasible!")
-            return False
+            return False, makeInfeasibleTime, verificationCheckTime, None
 
         log.info("\tChecking updated restrictions list does not yield an empty parameter valuation.")
-        if solveParametricConstraints(ta.parameters, restrictions, [], realValuedParameters) == False:
+        hasParameterValuationCheckStart = timeit.default_timer()
+        hasParameterValuation = solveParametricConstraints(ta.parameters, restrictions, [], realValuedParameters)
+        hasParameterValuationCheckTime = timeit.default_timer() - hasParameterValuationCheckStart
+        ta_stats.parameterExistenceVerificationTime += hasParameterValuationCheckTime
+        if hasParameterValuation == False:
             log.info(f"\tThere is not a parameter valuation satisfying the new constraints.")
-            return False
-        
+            return False, makeInfeasibleTime, verificationCheckTime, hasParameterValuationCheckTime
         log.info(f"\tCan make the unsafe path infeasible. New restrictions are: {restrictions}")
-        return True
+        return True, makeInfeasibleTime, verificationCheckTime, hasParameterValuationCheckTime
     def __toCnf(self, constraint, ctx):
         t = Then(With(Tactic('simplify', ctx=ctx), elim_and=True, elim_to_real=True, ctx=ctx), 'elim-term-ite', 'tseitin-cnf', ctx=ctx)
         g = Goal(ctx=ctx)
@@ -435,14 +503,46 @@ def solveSafetyProblem(ta, spec, reportMinCycles, realValuedParameters):
     restrictions = []
     while len(pathList) > 0:
         path = pathList.pop()
-        if path.isFeasible(ta, restrictions, reportMinCycles, realValuedParameters) == False:
+        feasibilityCheckStart = timeit.default_timer()
+        isFeasible = path.isFeasible(ta, restrictions, reportMinCycles, realValuedParameters)
+        feasibilityCheckTime = timeit.default_timer() - feasibilityCheckStart
+        if len(path.cycleCounters) == 0:
+            ta_stats.linearFeasibilityCheckCount += 1
+            ta_stats.linearFeasibilityCheckParameterCount += len(ta.parameters)
+            ta_stats.linearFeasibilityCheckDelayCount += len(path.locations)
+            ta_stats.linearFeasibilityCheckTime += feasibilityCheckTime
+            isLinear = 'linear'
+        else:
+            ta_stats.nonlinearFeasibilityCheckCount += 1
+            ta_stats.nonlinearFeasibilityCheckParameterCount += len(ta.parameters)
+            ta_stats.nonlinearFeasibilityCheckDelayCount += len(path.locations)
+            ta_stats.nonlinearFeasibilityCheckCycleCount += len(path.cycleCounters)
+            ta_stats.nonlinearFeasibilityCheckTime += feasibilityCheckTime
+            isLinear = 'nonlinear'
+        logLine = f"{ta.name}\t{isLinear}\t{len(ta.parameters)}/{len(path.locations)}/{len(path.cycleCounters)}\t{feasibilityCheckTime}\t{isFeasible}"
+        if isFeasible == False:
+            if len(path.cycleCounters) == 0:
+                ta_stats.linearInfeasiblePathCount += 1
+            else:
+                ta_stats.nonlinearInfeasiblePathCount += 1
+            log.stats(f"{logLine}")
             continue
+        if len(path.cycleCounters) == 0:
+            ta_stats.linearFeasiblePathCount += 1
+        else:
+            ta_stats.nonlinearFeasiblePathCount += 1
         if path.endsInUnsafeLocation(spec):
-            infeasibleMakingConstraint = path.makeInfeasible(ta, restrictions, realValuedParameters)
+            if len(path.cycleCounters) == 0:
+                ta_stats.linearFeasibleUnsafePathCount += 1
+            else:
+                ta_stats.nonlinearFeasibleUnsafePathCount += 1
+            infeasibleMakingConstraint, qeTime, verificationTime, hasParameterValuationTime = path.makeInfeasible(ta, restrictions, realValuedParameters)
+            log.stats(f"{logLine}\tTrue\t{qeTime}\t{verificationTime}\t{hasParameterValuationTime}")
             if infeasibleMakingConstraint == False:
                 log.info(f"PTA cannot be made safe")
                 return
             continue
+        log.stats(f"{logLine}\tFalse")
         lastLocationCount = len(list(filter(lambda a: a == path.locations[-1], path.locations)))
         if lastLocationCount == 2:
             log.info(f"\tFeasible path ends with a cycle")
@@ -530,7 +630,24 @@ def solve(specPath, reportMinCycles, realValuedParameters):
         solveSafetyProblem(ta, spec, reportMinCycles, realValuedParameters)
     return
 
+def addLoggingLevel(levelName, levelNum, methodName=None):
+  def logForLevel(self, message, *args, **kwargs):
+      if self.isEnabledFor(levelNum):
+          self._log(levelNum, message, args, **kwargs)
+  def logToRoot(message, *args, **kwargs):
+      log.log(levelNum, message, *args, **kwargs)
+
+  if not methodName:
+      methodName = levelName.lower()
+  log.addLevelName(levelNum, levelName)
+  setattr(log, levelName, levelNum)
+  setattr(log.getLoggerClass(), methodName, logForLevel)
+  setattr(log, methodName, logToRoot)
+
+ta_stats = Stats()
+
 if __name__ == '__main__':
+    addLoggingLevel('STATS', log.FATAL + 5)
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '-i', '--input',
@@ -548,7 +665,7 @@ if __name__ == '__main__':
         '-d', '--debug',
         help="Print debugging statements",
         action="store_const", dest="loglevel", const=log.DEBUG,
-        default=log.DEBUG,
+        default=log.STATS,
     )
     parser.add_argument(
         '-v', '--verbose',
@@ -560,11 +677,26 @@ if __name__ == '__main__':
     if os.path.isdir("logs") == False:
         os.makedirs("logs")
     
-    log.basicConfig(
-        level=args.loglevel,
-        filename=os.path.join("logs", args.outputPath or (os.path.basename(args.inputPath) + ".log")),
-        format='%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s',
-        datefmt='%H:%M:%S',
-        filemode='w'
-    )
+    if args.loglevel == log.STATS:
+      log.basicConfig(
+          level=args.loglevel,
+          filename=os.path.join("logs", args.outputPath or (os.path.basename(args.inputPath) + ".txt")),
+          format='%(message)s',
+          datefmt='%H:%M:%S',
+          filemode='w'
+      )
+    else:
+      log.basicConfig(
+          level=args.loglevel,
+          filename=os.path.join("logs", args.outputPath or (os.path.basename(args.inputPath) + ".txt")),
+          format='%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s',
+          datefmt='%H:%M:%S',
+          filemode='w'
+      )
+    log.stats("Case\tLinear / Non-linear\tNumber of parameters / delays / cycles\tFeasibility Check Time\tIs Feasible?\tIs Unsafe?\tQE Time\tInfeasibility verification time\tParameter valuation existence check time")
+    start = timeit.default_timer()
     solve(args.inputPath, args.reportMinCycles, args.realValuedParameters)
+    end = timeit.default_timer()
+    ta_stats.total_time = end-start
+
+    log.stats(ta_stats.to_str())
