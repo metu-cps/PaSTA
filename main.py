@@ -134,7 +134,9 @@ class Path:
         for c in self.cycleCounters:
             optimize.add(eval(f"{c} >= 0"))
         if reportMinCycles and len(self.cycleCounters) > 0:
-            cost = Real('cost', ctx=ctx)
+            if "cost" in globals():
+                del globals()["cost"]
+            globals()["cost"] = Real('cost', ctx=ctx)
 
         for p in ta.parameters:
             optimize.add(eval(f"{p.name} >= {p.lowerBound}"))
@@ -151,9 +153,10 @@ class Path:
 
         if reportMinCycles and len(self.cycleCounters) > 0:
             optimize.add(eval(f"cost == {'+'.join(self.cycleCounters)}"))
-            h = optimize.minimize(cost)
+            h = optimize.minimize(eval("cost"))
             c = optimize.check()
-            optimize.lower(h)
+            if c.r == 1:
+                optimize.lower(h)
         else:
             c = optimize.check()
 
@@ -177,7 +180,7 @@ class Path:
         goal = Goal(ctx=ctx)
         t = Tactic('qe', ctx=ctx)
         if len(self.cycleCounters) > 0:
-            t = With(t, qe_nonlinear=True)
+            t = With(t, qe_nonlinear=True, ctx=ctx)
 
         firstDelayNames = []
         averageDelayNames = []
@@ -219,13 +222,13 @@ class Path:
         log.info(f"\tCan make the unsafe path infeasible. New restrictions are: {restrictions}")
         return True
     def __toCnf(self, constraint, ctx):
-        t = Then(With('simplify', elim_and=True, elim_to_real=True, ctx=ctx), 'elim-term-ite', 'tseitin-cnf', ctx=ctx)
+        t = Then(With(Tactic('simplify', ctx=ctx), elim_and=True, elim_to_real=True, ctx=ctx), 'elim-term-ite', 'tseitin-cnf', ctx=ctx)
         g = Goal(ctx=ctx)
         g.add(constraint)
         return t.apply(g).as_expr()
     def __simplifyCnf(self, cnf, taParameters, ctx):
         try:
-            t = Then('simplify', 'propagate-values', ParThen('split-clause', 'propagate-ineqs'), 'simplify', 'ctx-simplify')
+            t = Then('simplify', 'propagate-values', ParThen('split-clause', 'propagate-ineqs', ctx=ctx), 'simplify', 'ctx-simplify', ctx=ctx)
             g = Goal(ctx=ctx)
             g.add(cnf)
             for i in range(0, len(taParameters)):
@@ -233,7 +236,9 @@ class Path:
                 g.add(eval(f"{taParameters[i].name} <= {taParameters[i].upperBound}"))
             simplifiedCnf = t.apply(g).as_expr()
             return simplifiedCnf
-        except:
+        except Exception as error:
+            log.exception(error)
+            log.debug(f"__simplifyCnf could not simplify. returning: {cnf}")
             return cnf
     def __toDnf(self, constraint, taParameters, ctx):
         # return constraint
@@ -263,6 +268,7 @@ class Path:
         for d in Path._decisionVariables:
             if d in globals():
                 del globals()[d]
+        Path._decisionVariables = []
         delayNames = [f"d{i}_{x}" for i,x in enumerate(self.locations)]
         for d in delayNames:
             Path._decisionVariables.append(d)
@@ -436,7 +442,6 @@ def solveSafetyProblem(ta, spec, reportMinCycles, realValuedParameters):
             if infeasibleMakingConstraint == False:
                 log.info(f"PTA cannot be made safe")
                 return
-            restrictions.append(infeasibleMakingConstraint)
             continue
         lastLocationCount = len(list(filter(lambda a: a == path.locations[-1], path.locations)))
         if lastLocationCount == 2:

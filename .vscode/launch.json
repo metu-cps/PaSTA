@@ -38,7 +38,7 @@
             "program": "${workspaceFolder}/main.py",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["-i", "./Examples/OperationLoop/OperationLoop.safety1.json", "-o", "OperationLoop.safety1.debug.log", "-d"]
+            "args": ["-i", "./Examples/OperationLoop/OperationLoop.safety1.json", "-o", "OperationLoop.safety1.debug.log", "--reportMinCycles", "-d"]
         },
         {
             "name": "PaperExample Int params debug",
