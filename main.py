@@ -212,9 +212,6 @@ class Path:
         log.info("\tTrying to make the path infeasible")
         ctx = self.__initDecisionVariables(ta, Real, realValuedParameters)
         goal = Goal(ctx=ctx)
-        t = Tactic('qe', ctx=ctx)
-        if len(self.cycleCounters) > 0:
-            t = With(t, qe_nonlinear=True, ctx=ctx)
 
         firstDelayNames = []
         averageDelayNames = []
@@ -223,8 +220,14 @@ class Path:
                 firstDelayNames.append(f"f{i}_{self.locations[i]}")
                 averageDelayNames.append(f"a{i}_{self.locations[i]}")
         delayNames = [f"d{i}_{x}" for i,x in enumerate(self.locations)]
-        joinedAssertions = "And(" + str.join(", ", self.assertions) + ")"
-        
+        t = Tactic('qe', ctx=ctx)
+        if len(self.cycleCounters) == 0:
+          nonNegativeDelays = list(map(lambda a: f"{a} >= 0", delayNames))
+          joinedAssertions = "And(" + str.join(", ", nonNegativeDelays + self.assertions) + ")"
+        else:
+          joinedAssertions = "And(" + str.join(", ", self.assertions) + ")"
+          t = With(t, qe_nonlinear=True, ctx=ctx)
+            
         qeArgs = str.join(", ", firstDelayNames + averageDelayNames + delayNames + self.cycleCounters)
         quantifiedDelayConstraint = f"Not(Exists([{qeArgs}], {joinedAssertions}))"
         goal.add(eval(quantifiedDelayConstraint))
