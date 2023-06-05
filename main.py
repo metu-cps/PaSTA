@@ -465,13 +465,13 @@ class Path:
             for g in transitionGuard:
                 t, x = path.__getConstraintType(g, i, lastCycleResetIndices)
                 if t == 1:
-                    path.assertions.append(replaceFullWord(inv, x, ("+".join(path.clockValues[i]["lb-out"][x])) or "0"))
+                    path.assertions.append(replaceFullWord(g, x, ("+".join(path.clockValues[i]["lb-out"][x])) or "0"))
                 elif t == 2:
-                    path.assertions.append(replaceFullWord(inv, x, ("+".join(path.clockValues[i]["reset-out-f"][x])) or "0"))
-                    path.assertions.append(replaceFullWord(inv, x, ("+".join(path.clockValues[i]["reset-out-a"][x])) or "0"))
-                    path.assertions.append(replaceFullWord(inv, x, ("+".join(path.clockValues[i]["reset-out-l"][x])) or "0"))
+                    path.assertions.append(replaceFullWord(g, x, ("+".join(path.clockValues[i]["reset-out-f"][x])) or "0"))
+                    path.assertions.append(replaceFullWord(g, x, ("+".join(path.clockValues[i]["reset-out-a"][x])) or "0"))
+                    path.assertions.append(replaceFullWord(g, x, ("+".join(path.clockValues[i]["reset-out-l"][x])) or "0"))
                 elif t == 3:
-                    path.assertions.append(replaceFullWord(inv, x, ("+".join(path.clockValues[i]["ub-out"][x])) or "0"))
+                    path.assertions.append(replaceFullWord(g, x, ("+".join(path.clockValues[i]["ub-out"][x])) or "0"))
 
         arrivingLocationInv = next((a.constraints for a in ta.invariants if a.location == path.locations[-1]), [])
         path.__addAssertionsFromConstraint(arrivingLocationInv, path.clockValues[-1]["in"])
