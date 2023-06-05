@@ -311,6 +311,8 @@ class Path:
     def __toDnf(self, constraint, taParameters, ctx):
         # return constraint
         cnf = self.__toCnf(constraint, ctx)
+        if cnf.decl().name() != 'and':
+            return cnf
         simplifiedCnf = self.__simplifyCnf(cnf, taParameters, ctx)
         # return simplifiedCnf #todo
         t = Then(Tactic('simplify', ctx=ctx), 'fm', Repeat(OrElse(Then('split-clause', 'simplify', 'solve-eqs', 'ctx-simplify', 'ctx-solver-simplify', ctx=ctx), Tactic('skip', ctx=ctx), ctx=ctx), ctx=ctx), ctx=ctx)
@@ -321,6 +323,8 @@ class Path:
         return dnf
     def _checkUnsatDnfTerms(self, dnf, ctx):
         unsat = 0
+        if dnf.decl().name != 'or':
+          return
         for i in range(dnf.num_args()):
             g = Goal(ctx=ctx)
             g.add(dnf.arg(i))
@@ -375,15 +379,17 @@ class Path:
         else:
             raise ValueError("Unsupported automaton. Equals check in constraints.") 
         for x in resetIndices:
-            if x in args[0] and resetIndices[x] == None:
-                return 1, x
-            elif x in constraint and index > resetIndices[x]:
-                return 2, x
-            elif x in args[1] and resetIndices[x] == None:
-                return 3, x
-            elif x in constraint and index <= resetIndices[x]:
-                self.logDetails()
-                raise ValueError("Unsupported automaton. In a cycle, clock is used first then reset.") 
+            if resetIndices[x] == None:
+                if x in args[0]:
+                    return 1, x
+                elif x in args[1]:
+                    return 3, x
+            else:
+                if x in constraint and index > resetIndices[x]:
+                    return 2, x
+                elif x in constraint and index <= resetIndices[x]:
+                    self.logDetails()
+                    raise ValueError("Unsupported automaton. In a cycle, clock is used first then reset.") 
         return 4, None
     def getCycleExpandedPath(self, ta):
         if len(self.cycles) == 0 or len(self.cycles) == len(self.cycleCounters) or self.cycles[-1][1] != len(self.locations) - 2:
