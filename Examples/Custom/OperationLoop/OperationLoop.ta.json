@@ -1,0 +1,22 @@
+{
+    "name": "Operation Loop",
+    "locations": ["L1", "L2", "L3"],
+    "initialLocation": "L1",
+    "actions": ["a", "b", "c"],
+    "clocks": ["x", "y"],
+    "transitions": [
+        {"source": "L1", "target": "L2", "action": "a", "reset": [], "guardConstraints": []},
+        {"source": "L2", "target": "L1", "action": "b", "reset": ["x"], "guardConstraints": []},
+        {"source": "L2", "target": "L3", "action": "c", "reset": [], "guardConstraints": ["y >= p3", "x >= p2"]}
+    ],
+    "invariants": [
+        {"location": "L1", "constraints": ["x <= p1"]},
+        {"location": "L2", "constraints": ["x <= p1"]},
+        {"location": "L3", "constraints": ["x >= p2"]}
+    ],
+    "parameters": [
+        {"name": "p1", "lowerBound": 1, "upperBound": 10},
+        {"name": "p2", "lowerBound": 5, "upperBound": 15},
+        {"name": "p3", "lowerBound": 5000, "upperBound": 5000}
+    ]
+}

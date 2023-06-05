@@ -1,0 +1,33 @@
+{
+    "name": "Paper Example",
+    "locations": ["L0", "L1", "L2", "L3", "L4", "L5", "L6", "L7"],
+    "initialLocation": "L0",
+    "actions": ["e0", "e1", "e2", "e3", "e4", "e5", "e6", "e7", "e8"],
+    "clocks": ["x", "y"],
+    "transitions": [
+        {"source": "L0", "target": "L1", "action": "e0", "reset": ["x"], "guardConstraints": []},
+        {"source": "L1", "target": "L2", "action": "e1", "reset": [], "guardConstraints": ["5 <= x"]},
+        {"source": "L1", "target": "L4", "action": "e4", "reset": ["x", "y"], "guardConstraints": []},
+        {"source": "L2", "target": "L3", "action": "e2", "reset": [], "guardConstraints": []},
+        {"source": "L3", "target": "L6", "action": "e3", "reset": [], "guardConstraints": []},
+        {"source": "L4", "target": "L5", "action": "e6", "reset": [], "guardConstraints": []},
+        {"source": "L4", "target": "L6", "action": "e5", "reset": [], "guardConstraints": ["x >= q2"]},
+        {"source": "L5", "target": "L4", "action": "e7", "reset": ["x"], "guardConstraints": []},
+        {"source": "L5", "target": "L7", "action": "e8", "reset": [], "guardConstraints": ["y >= 5000"]}
+    ],
+    "invariants": [
+        {"location": "L0", "constraints": []},
+        {"location": "L1", "constraints": ["y >= 5"]},
+        {"location": "L2", "constraints": ["y <= 8"]},
+        {"location": "L3", "constraints": []},
+        {"location": "L4", "constraints": ["x <= p1"]},
+        {"location": "L5", "constraints": ["x <= p1"]},
+        {"location": "L6", "constraints": []},
+        {"location": "L7", "constraints": ["x >= r3"]}
+    ],
+    "parameters": [
+        {"name": "p1", "lowerBound": 1, "upperBound": 10},
+        {"name": "q2", "lowerBound": 5, "upperBound": 15},
+        {"name": "r3", "lowerBound": 5, "upperBound": 15}
+    ]
+}

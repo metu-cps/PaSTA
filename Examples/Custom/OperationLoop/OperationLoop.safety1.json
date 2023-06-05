@@ -10,6 +10,6 @@
     "parameters": [
         {"name": "p1", "lowerBound": 1, "upperBound": 10},
         {"name": "p2", "lowerBound": 5, "upperBound": 15},
-        {"name": "p3", "lowerBound": 50000, "upperBound": 50000}
+        {"name": "p3", "lowerBound": 5000, "upperBound": 5000}
     ]
 }

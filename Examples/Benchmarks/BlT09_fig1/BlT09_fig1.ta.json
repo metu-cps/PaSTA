@@ -1,0 +1,26 @@
+{
+    "name": "BlT09_fig1",
+    "locations": ["L1", "L2", "L3", "L4"],
+    "initialLocation": "L1",
+    "actions": ["a", "b"],
+    "clocks": ["x", "y"],
+    "transitions": [
+        {"source": "L1", "target": "L1", "action": "a", "reset": [], "guardConstraints": []},
+        {"source": "L1", "target": "L2", "action": "b", "reset": ["x", "y"], "guardConstraints": []},
+        {"source": "L2", "target": "L2", "action": "a", "reset": [], "guardConstraints": []},
+        {"source": "L2", "target": "L3", "action": "b", "reset": [], "guardConstraints": ["y + 2 > p1"]},
+        {"source": "L3", "target": "L3", "action": "a", "reset": [], "guardConstraints": []},
+        {"source": "L3", "target": "L4", "action": "b", "reset": [], "guardConstraints": ["p2 > x"]},
+        {"source": "L4", "target": "L4", "action": "a", "reset": [], "guardConstraints": []}
+    ],
+    "invariants": [
+        {"location": "L1", "constraints": []},
+        {"location": "L2", "constraints": []},
+        {"location": "L3", "constraints": []},
+        {"location": "L4", "constraints": []}
+    ],
+    "parameters": [
+      {"name": "p1", "lowerBound": 1, "upperBound": 10},
+      {"name": "p2", "lowerBound": 1, "upperBound": 10}
+    ]
+}
