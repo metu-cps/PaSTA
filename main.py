@@ -1,8 +1,10 @@
 import argparse
+import glob
 import json
 import logging as log
 import os
 import re
+import subprocess
 import timeit
 from types import SimpleNamespace
 from z3 import *
@@ -613,7 +615,21 @@ def addLoggingLevel(levelName, levelNum, methodName=None):
 
 ta_stats = Stats()
 
+def runBenchmarks():
+    specs = glob.glob("Examples/**/*.safety*.json", recursive=True)
+    for s in specs:
+        o = os.path.basename(s)
+        if "Cycles_5_6" in s:
+          subprocess.run(["python", "main.py", "-i", s, "-o", f"{o}.Int.debug.log", "--reportMinCycles", "-d"])
+          subprocess.run(["python", "main.py", "-i", s, "-o", f"{o}.Real.debug.log", "--reportMinCycles", "--realValuedParameters", "-d"])
+          subprocess.run(["python", "main.py", "-i", s, "-o", f"{o}.Int.stats.log"])
+          subprocess.run(["python", "main.py", "-i", s, "-o", f"{o}.Real.stats.log", "--realValuedParameters"])
+
 if __name__ == '__main__':
+    if len(sys.argv) == 1:
+        runBenchmarks()
+        exit()
+
     addLoggingLevel('STATS', log.FATAL + 5)
     parser = argparse.ArgumentParser()
     parser.add_argument(
