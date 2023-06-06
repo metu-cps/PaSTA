@@ -1,4 +1,5 @@
 import argparse
+import copy
 import glob
 import json
 import logging as log
@@ -66,7 +67,7 @@ class Path:
         p.clockValues = Path.copyClockValues(obj.clockValues) # internals modified, need to deep copy
         p.assertions = obj.assertions.copy() # simple string list
         p.cycleLocations = obj.cycleLocations.copy() # simple string list
-        p.cycles = obj.cycles.copy() # simple list of list of two integers
+        p.cycles = copy.deepcopy(obj.cycles) # simple list of list of two integers
         p.cycleCounters = obj.cycleCounters.copy() # simple string list
         return p
     @staticmethod
