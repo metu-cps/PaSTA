@@ -179,7 +179,9 @@ class Path:
         
         if len(self.assertions) > 0:
             joinedAssertions = "And(" + str.join(", ", self.assertions) + ")"
-            optimize.add(eval(joinedAssertions))
+            e = eval(joinedAssertions)
+            if str(e) != 'And(True)':
+              optimize.add(eval(joinedAssertions))
         for r in restrictions:
             if type(r) == bool:
                 optimize.add(r)
@@ -212,7 +214,8 @@ class Path:
     def makeInfeasible(self, ta, restrictions, realValuedParameters):
         makeInfeasibleStart = timeit.default_timer()
         log.info("\tTrying to make the path infeasible")
-        ctx = self.__initDecisionVariables(ta, Real, realValuedParameters)
+        cycleCounterType = eval(ta.cycleCounterType) if hasattr(ta, "cycleCounterType") else Real # TODO: ideally, this should not be here
+        ctx = self.__initDecisionVariables(ta, cycleCounterType, realValuedParameters)
         goal = Goal(ctx=ctx)
 
         firstDelayNames = []
@@ -227,7 +230,8 @@ class Path:
           nonNegativeDelays = list(map(lambda a: f"{a} >= 0", delayNames))
           joinedAssertions = "And(" + str.join(", ", nonNegativeDelays + self.assertions) + ")"
         else:
-          joinedAssertions = "And(" + str.join(", ", self.assertions) + ")"
+          nonnegativeCycles = [] if cycleCounterType == Real else list(map(lambda a: f"{a} >= 0", self.cycleCounters)) # TODO: ideally, this should not be here, either
+          joinedAssertions = "And(" + str.join(", ", self.assertions + nonnegativeCycles) + ")"
           t = With(t, qe_nonlinear=True, ctx=ctx)
             
         qeArgs = str.join(", ", firstDelayNames + averageDelayNames + delayNames + self.cycleCounters)
@@ -619,11 +623,10 @@ def runBenchmarks():
     specs = glob.glob("Examples/**/*.safety*.json", recursive=True)
     for s in specs:
         o = os.path.basename(s)
-        if "Cycles_5_6" in s:
-          subprocess.run(["python", "main.py", "-i", s, "-o", f"{o}.Int.debug.log", "--reportMinCycles", "-d"])
-          subprocess.run(["python", "main.py", "-i", s, "-o", f"{o}.Real.debug.log", "--reportMinCycles", "--realValuedParameters", "-d"])
-          subprocess.run(["python", "main.py", "-i", s, "-o", f"{o}.Int.stats.log"])
-          subprocess.run(["python", "main.py", "-i", s, "-o", f"{o}.Real.stats.log", "--realValuedParameters"])
+        subprocess.run(["python", "main.py", "-i", s, "-o", f"{o}.Int.debug.log", "--reportMinCycles", "-d"])
+        subprocess.run(["python", "main.py", "-i", s, "-o", f"{o}.Real.debug.log", "--reportMinCycles", "--realValuedParameters", "-d"])
+        subprocess.run(["python", "main.py", "-i", s, "-o", f"{o}.Int.stats.log"])
+        subprocess.run(["python", "main.py", "-i", s, "-o", f"{o}.Real.stats.log", "--realValuedParameters"])
 
 if __name__ == '__main__':
     if len(sys.argv) == 1:

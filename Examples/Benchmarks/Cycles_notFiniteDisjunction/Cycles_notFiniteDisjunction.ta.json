@@ -1,0 +1,20 @@
+{
+    "name": "Cycles_notFiniteDisjunction",
+    "locations": ["L1", "L2"],
+    "initialLocation": "L1",
+    "actions": ["a", "b"],
+    "clocks": ["x", "y"],
+    "transitions": [
+        {"source": "L1", "target": "L1", "action": "a", "reset": ["x"], "guardConstraints": ["x >= 1"]},
+        {"source": "L1", "target": "L2", "action": "b", "reset": ["x", "y"], "guardConstraints": ["x >= 1", "x <= 1", "p1 >= y", "p1 <= y"]},
+        {"source": "L2", "target": "L2", "action": "a", "reset": ["x", "y"], "guardConstraints": []}
+    ],
+    "invariants": [
+        {"location": "L1", "constraints": ["1 >= x"]},
+        {"location": "L2", "constraints": []}
+    ],
+    "parameters": [
+        {"name": "p1", "lowerBound": 0, "upperBound": 10}
+    ],
+    "cycleCounterType": "Int"
+}
