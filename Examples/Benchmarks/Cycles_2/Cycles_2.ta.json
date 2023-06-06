@@ -6,7 +6,8 @@
     "clocks": ["x", "y"],
     "transitions": [
         {"source": "L1", "target": "L1", "action": "a", "reset": ["x"], "guardConstraints": ["x >= 1"]},
-        {"source": "L1", "target": "L2", "action": "b", "reset": [], "guardConstraints": ["y >= 2"]}
+        {"source": "L1", "target": "L2", "action": "b", "reset": [], "guardConstraints": ["y >= 2"]},
+        {"source": "L2", "target": "L2", "action": "a", "reset": [], "guardConstraints": []}
     ],
     "invariants": [
         {"location": "L1", "constraints": ["p1 >= y", "1 >= x"]},
