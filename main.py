@@ -183,8 +183,9 @@ class Path:
         if len(self.assertions) > 0:
             joinedAssertions = "And(" + str.join(", ", self.assertions) + ")"
             e = eval(joinedAssertions)
-            if str(e) != 'And(True)':
-              optimize.add(eval(joinedAssertions))
+            if e.ctx.ctx != ctx.ctx:
+                e = e.translate(ctx)
+            optimize.add(e)
         for r in restrictions:
             if type(r) == bool:
                 optimize.add(r)
