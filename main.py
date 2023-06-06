@@ -105,7 +105,7 @@ class Path:
         # consider the path l1, l2, l1, l2. only element in cycles should be [0, 1].
         # below check prevents [1, 2] from going into the cycles.
         if location in self.locations and location not in self.cycleLocations:
-            self.cycles.append([self.locations.index(location), len(self.locations) - 1])
+            self.cycles.append([self.locations.index(location), len(self.locations) - 1, False])
             self.cycleLocations += self.locations[self.locations.index(location):]
 
         self.locations.append(location)
@@ -161,6 +161,8 @@ class Path:
         delayNames = [f"d{i}_{x}" for i,x in enumerate(self.locations)]
         optimize = Optimize(ctx=ctx)
         for c in self.cycles:
+            if c[2] == False:
+                continue
             for i in range(c[0], c[1] + 1):
                 optimize.add(eval(f"f{i}_{self.locations[i]} >= 0"))
                 optimize.add(eval(f"a{i}_{self.locations[i]} >= 0"))
@@ -215,23 +217,30 @@ class Path:
     def makeInfeasible(self, ta, restrictions, realValuedParameters):
         makeInfeasibleStart = timeit.default_timer()
         log.info("\tTrying to make the path infeasible")
-        cycleCounterType = eval(ta.cycleCounterType) if hasattr(ta, "cycleCounterType") else Real # TODO: ideally, this should not be here
+
+         # TODO: ideally, these should not make a difference and be
+        cycleCounterType = eval(ta.cycleCounterType) if hasattr(ta, "cycleCounterType") else Real
+        nonNegativeDelayAssertions = eval(ta.nonNegativeDelayAssertions) if hasattr(ta, "nonNegativeDelayAssertions") else False
+        nonNegativeCycleAssertions = eval(ta.nonNegativeCycleAssertions) if hasattr(ta, "nonNegativeCycleAssertions") else False
+
         ctx = self.__initDecisionVariables(ta, cycleCounterType, realValuedParameters)
         goal = Goal(ctx=ctx)
 
         firstDelayNames = []
         averageDelayNames = []
         for c in self.cycles:
+            if c[2] == False:
+                continue
             for i in range(c[0], c[1] + 1):
                 firstDelayNames.append(f"f{i}_{self.locations[i]}")
                 averageDelayNames.append(f"a{i}_{self.locations[i]}")
         delayNames = [f"d{i}_{x}" for i,x in enumerate(self.locations)]
         t = Tactic('qe', ctx=ctx)
         if len(self.cycleCounters) == 0:
-          nonNegativeDelays = list(map(lambda a: f"{a} >= 0", delayNames))
+          nonNegativeDelays = list(map(lambda a: f"{a} >= 0", delayNames)) if nonNegativeDelayAssertions else []
           joinedAssertions = "And(" + str.join(", ", nonNegativeDelays + self.assertions) + ")"
         else:
-          nonnegativeCycles = [] if cycleCounterType == Real else list(map(lambda a: f"{a} >= 0", self.cycleCounters)) # TODO: ideally, this should not be here, either
+          nonnegativeCycles = list(map(lambda a: f"{a} >= 0", self.cycleCounters)) if nonNegativeCycleAssertions else []
           joinedAssertions = "And(" + str.join(", ", self.assertions + nonnegativeCycles) + ")"
           t = With(t, qe_nonlinear=True, ctx=ctx)
             
@@ -391,7 +400,8 @@ class Path:
             log.info("All clocks get reset in the cycle, so nothing will happen by cycling more. Will not add the cyclic path")
             return None
         path = Path.copyFrom(self)
-        path.cycleCounters.append(f"cc_{len(path.cycles)}")
+        path.cycles[-1][2] = True
+        path.cycleCounters.append(f"cc_{len(path.cycleCounters) + 1}")
         # clear assertions from last cycle first
         lastCycleDelays = [f"d{a}_{path.locations[a]}" for a in range(lastCycle[0], len(path.locations))]
         path.assertions = list(filter(lambda a: any(b in a for b in lastCycleDelays) == False, path.assertions))

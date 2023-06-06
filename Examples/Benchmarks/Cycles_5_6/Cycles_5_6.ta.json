@@ -13,6 +13,6 @@
         {"location": "L2", "constraints": []}
     ],
     "parameters": [
-        {"name": "p1", "lowerBound": 1, "upperBound": 10}
+        {"name": "p1", "lowerBound": 0, "upperBound": 10}
     ]
 }

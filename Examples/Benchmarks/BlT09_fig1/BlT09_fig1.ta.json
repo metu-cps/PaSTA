@@ -20,7 +20,8 @@
         {"location": "L4", "constraints": []}
     ],
     "parameters": [
-      {"name": "p1", "lowerBound": 1, "upperBound": 10},
-      {"name": "p2", "lowerBound": 1, "upperBound": 10}
-    ]
+      {"name": "p1", "lowerBound": 0, "upperBound": 10},
+      {"name": "p2", "lowerBound": 0, "upperBound": 10}
+    ],
+    "nonNegativeDelayAssertions": "True"
 }
