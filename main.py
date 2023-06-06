@@ -36,8 +36,8 @@ class Stats:
     total_time = Stats.__to_ms(self.total_time)
     z3_time = Stats.__to_ms(self.linearFeasibilityCheckTime + self.nonlinearFeasibilityCheckTime + self.linearQeTime + self.nonlinearQeTime)
     str = "automata\tpath counts\tfeasibility check time\tqe time\tZ3 time / total time\n"
-    str += f"{self.name}\t{self.linearFeasibilityCheckCount} / {self.linearFeasiblePathCount} / {self.linearFeasibleUnsafePathCount} - "
-    str += f"{self.nonlinearFeasibilityCheckCount} / {self.nonlinearFeasiblePathCount} / {self.nonlinearFeasibleUnsafePathCount}\t"
+    str += f"{self.name}\t{self.linearFeasibilityCheckCount} - {self.linearFeasiblePathCount} - {self.linearFeasibleUnsafePathCount} / "
+    str += f"{self.nonlinearFeasibilityCheckCount} - {self.nonlinearFeasiblePathCount} - {self.nonlinearFeasibleUnsafePathCount}\t"
     str += f"{linearFeasibilityCheckTime} / {nonlinearFeasibilityCheckTime}\t"
     str += f"{linearQeTime} / {nonlinearQeTime}\t"
     str += f"{z3_time} / {total_time}"
@@ -639,6 +639,12 @@ def runBenchmarks():
         subprocess.run(["python", "main.py", "-i", s, "-o", f"{o}.Real.debug.log", "--reportMinCycles", "--realValuedParameters", "-d"])
         subprocess.run(["python", "main.py", "-i", s, "-o", f"{o}.Int.stats.log"])
         subprocess.run(["python", "main.py", "-i", s, "-o", f"{o}.Real.stats.log", "--realValuedParameters"])
+    logs = glob.glob("logs/*.stats.log")
+    with open("logs/stats.txt", 'w') as stats_file:
+      for o in logs:
+          with open(o, 'r') as f:
+            last_line = f.readlines()[-1]
+            stats_file.write(last_line)
 
 if __name__ == '__main__':
     if len(sys.argv) == 1:
