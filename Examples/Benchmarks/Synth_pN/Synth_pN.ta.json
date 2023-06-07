@@ -1,0 +1,19 @@
+{
+    "name": "Synth_pN",
+    "locations": ["L1", "L2"],
+    "initialLocation": "L1",
+    "actions": ["a", "b"],
+    "clocks": ["x", "y"],
+    "transitions": [
+        {"source": "L1", "target": "L1", "action": "a", "reset": ["x"], "guardConstraints": ["p1 >= x", "p1 <= x"]},
+        {"source": "L1", "target": "L2", "action": "b", "reset": ["x", "y"], "guardConstraints": ["x >= 0", "x <= 0", "p2 >= y", "p2 <= y"]}
+    ],
+    "invariants": [
+        {"location": "L1", "constraints": ["1 >= x"]},
+        {"location": "L2", "constraints": []}
+    ],
+    "parameters": [
+        {"name": "p1", "lowerBound": 0, "upperBound": 10},
+        {"name": "p2", "lowerBound": 0, "upperBound": 10}
+    ]
+}

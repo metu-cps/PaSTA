@@ -1,0 +1,20 @@
+{
+    "name": "Synth_pNplusq",
+    "locations": ["L1", "L2"],
+    "initialLocation": "L1",
+    "actions": ["a", "b"],
+    "clocks": ["x", "y"],
+    "transitions": [
+        {"source": "L1", "target": "L1", "action": "a", "reset": ["x"], "guardConstraints": ["p1 >= x", "p1 <= x"]},
+        {"source": "L1", "target": "L2", "action": "b", "reset": [], "guardConstraints": ["p2 >= x", "p2 <= x", "p3 >= y", "p3 <= y"]}
+    ],
+    "invariants": [
+        {"location": "L1", "constraints": []},
+        {"location": "L2", "constraints": []}
+    ],
+    "parameters": [
+        {"name": "p1", "lowerBound": 0, "upperBound": 10},
+        {"name": "p2", "lowerBound": 0, "upperBound": 10},
+        {"name": "p3", "lowerBound": 0, "upperBound": 10}
+    ]
+}
