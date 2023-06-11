@@ -6,9 +6,9 @@
     "clocks": ["x1", "x2"],
     "transitions": [
         {"source": "normal", "target": "heating", "action": "startHeating", "reset": ["x1", "x2"], "guardConstraints": []},
-        {"source": "heating", "target": "ringing", "action": "triggerAlarm", "reset": ["x2"], "guardConstraints": ["p2 >= x2", "p2 <= x2"]},
+        {"source": "heating", "target": "ringing", "action": "triggerAlarm", "reset": ["x2"], "guardConstraints": ["p2 == x2"]},
         {"source": "heating", "target": "boom", "action": "tooHot", "reset": [], "guardConstraints": ["x1 >= p1"]},
-        {"source": "ringing", "target": "watering", "action": "startWatering", "reset": ["x2"], "guardConstraints": ["p3 >= x2", "p3 <= x2"]},
+        {"source": "ringing", "target": "watering", "action": "startWatering", "reset": ["x2"], "guardConstraints": ["p3 == x2"]},
         {"source": "ringing", "target": "boom", "action": "tooHot", "reset": [], "guardConstraints": ["x1 >= p1"]},
         {"source": "watering", "target": "stopped", "action": "endWatering", "reset": ["x1", "x2"], "guardConstraints": ["p4 >= x2"]},
         {"source": "watering", "target": "boom", "action": "tooHot", "reset": [], "guardConstraints": ["x1 >= p1"]},

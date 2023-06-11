@@ -363,25 +363,25 @@ class Path:
                 globals()[p.name] = Int(p.name,ctx=ctx)
         return ctx
     def __getConstraintType(self, constraint, index, resetIndices):
-        if ">" in constraint:
-            args = constraint.split(">")
-        elif "<" in constraint:
-            args = constraint.split("<")
-            args.reverse()
-        else:
-            raise ValueError("Unsupported automaton. Equals check in constraints.") 
-        for x in resetIndices:
-            if resetIndices[x] == None:
-                if x in args[0]:
-                    return 1, x
-                elif x in args[1]:
-                    return 3, x
+        x = next((c for c in resetIndices if c in constraint), None)
+        if resetIndices[x] == None:
+            if ">" in constraint:
+                args = constraint.split(">")
+            elif "<" in constraint:
+                args = constraint.split("<")
+                args.reverse()
             else:
-                if x in constraint and index > resetIndices[x]:
-                    return 2, x
-                elif x in constraint and index <= resetIndices[x]:
-                    self.logDetails()
-                    raise ValueError("Unsupported automaton. In a cycle, clock is used first then reset.") 
+                raise ValueError("Unsupported automaton. Equals check in constraints.")
+            if x in args[0]:
+                return 1, x
+            elif x in args[1]:
+                return 3, x
+        else:
+            if index > resetIndices[x]:
+                return 2, x
+            elif index <= resetIndices[x]:
+                self.logDetails()
+                raise ValueError("Unsupported automaton. In a cycle, clock is used first then reset.") 
         return 4, None
     def getCycleExpandedPath(self, ta):
         if len(self.cycles) == 0 or len(self.cycles) == len(self.cycleCounters) or self.cycles[-1][1] != len(self.locations) - 2:
