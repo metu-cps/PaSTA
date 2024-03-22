@@ -641,9 +641,15 @@ def runBenchmarks():
         subprocess.run(["python", "main.py", "-i", s, "-o", f"{o}.Real.stats.log", "--realValuedParameters"])
     logs = glob.glob("logs/*.stats.log")
     with open("logs/stats.txt", 'w') as stats_file:
+      header = "Parameter Value\t PTA name\t Path Counts\t Feasibility Time\t QE time\t Z3/Total time\t Imitator time"
+      stats_file.write(header)
       for o in logs:
           with open(o, 'r') as f:
             last_line = f.readlines()[-1]
+            if "Real" in o:
+                last_line = "Real\t" + last_line
+            if "Int" in o:
+                last_line = "Int \t" + last_line
             stats_file.write(last_line)
 
 if __name__ == '__main__':

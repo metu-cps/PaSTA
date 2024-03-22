@@ -1,0 +1,113 @@
+(*******************************************************************************
+ *                                IMITATOR MODEL                               
+ * 
+ * Title            : Figure1PTA
+ * Description      : Simple model with 1 PTA only
+ * Correctness      : "Crash" cannot happen
+ * Scalable         : 
+ * Generated        : 
+ * Categories       : Education ; Toy
+ * Source           : Own work
+ * bibkey           : 
+ * Author           : Burkay Sucu
+ * Modeling         : Burkay Sucu
+ * Input by         : Burkay Sucu
+ * License          : 
+ * 
+ * Created          : 2023/08/01
+ * Last modified    : 2023/08/01
+ * Model version    : 
+ * 
+ * IMITATOR version : 3.1
+ ******************************************************************************)
+
+
+
+
+var
+
+(* Clocks *)
+ 	x, y
+		: clock;
+
+(* Parameters *)
+	p,  (* Parameter p *)
+	q, (* Parameter q *)
+	r, (* Parameter r *)
+		: parameter;
+
+
+
+(************************************************************)
+  automaton system
+(************************************************************)
+synclabs: e0, e1, e2, e3, e4, e5, e6, e7, e8, danger;
+
+loc l0: invariant True
+	when True sync e0 do {x := 0} goto l1;
+
+loc l1: invariant y >= 5
+	when 5 <= x sync e1 goto l2;
+	when True sync e4 do {x := 0, y := 0} goto l4;
+
+loc l2: invariant y <= 8
+	when True sync e2 goto l3;
+
+loc l3: invariant True
+	when True sync e3 goto l6;
+
+loc l4: invariant x <= p
+	when True sync e6 do {x := 0} goto l5;
+	when x >= q sync e5 goto l6;
+
+loc l5: invariant x <= p
+	when True sync e7 goto l4;
+	when y >= 5000 sync e8 goto l7;
+
+loc l6: invariant True
+	when True sync danger goto Crash;
+
+loc l7: invariant x >= r
+	when True sync danger goto Crash;
+
+loc Crash: invariant True
+end (* system *)
+
+
+
+(************************************************************)
+(* Initial state *)
+(************************************************************)
+
+init := {
+  discrete =
+  	(*------------------------------------------------------------*)
+  	(* Initial location *)
+  	(*------------------------------------------------------------*)
+  	  loc[system]      := l0,
+  ;
+
+  continuous =
+  	(*------------------------------------------------------------*)
+  	(* Initial clock constraints *)
+  	(*------------------------------------------------------------*)
+  	& x = 0
+  	& y = 0
+
+  	(*------------------------------------------------------------*)
+  	(* Parameter constraints *)
+  	(*------------------------------------------------------------*)
+  	& p >= 0
+  	& p <= 10
+  	& q >= 5
+  	& q <= 15
+  	& r >= 5
+  	& r <= 15
+  ;
+}
+
+
+(************************************************************)
+(* The end *)
+(************************************************************)
+end
