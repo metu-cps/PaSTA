@@ -21,6 +21,7 @@ Safety Benchmarks:
     # docker run -v ./:/mnt/ptas imitator/imitator /mnt/ptas/JLR15_Fig6.imi /mnt/ptas/JLR15_Fig6-AGnot.imiprop
     docker run -v ./:/mnt/ptas imitator/imitator /mnt/ptas/NuclearPlant.imi /mnt/ptas/NuclearPlant-AGnot.imiprop
     # docker run -v ./:/mnt/ptas imitator/imitator /mnt/ptas/PTAfromFig1.imi /mnt/ptas/PTAfromFig1-AGnot.imiprop
+    # docker run -v ./:/mnt/ptas imitator/imitator /mnt/ptas/Synth_3N.imi /mnt/ptas/Synth_3N-AGnot.imiprop
     # docker run -v ./:/mnt/ptas imitator/imitator /mnt/ptas/Synth_int01.imi /mnt/ptas/Synth_int01-AGnot.imiprop
     # docker run -v ./:/mnt/ptas imitator/imitator /mnt/ptas/Synth_InvN.imi /mnt/ptas/Synth_InvN-AGnot.imiprop
     # docker run -v ./:/mnt/ptas imitator/imitator /mnt/ptas/Synth_N.imi /mnt/ptas/Synth_N-AGnot.imiprop

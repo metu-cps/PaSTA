@@ -222,6 +222,7 @@ class Path:
          # TODO: ideally, these should not make a difference and be
         cycleCounterType = eval(ta.cycleCounterType) if hasattr(ta, "cycleCounterType") else Real
         nonNegativeDelayAssertions = eval(ta.nonNegativeDelayAssertions) if hasattr(ta, "nonNegativeDelayAssertions") else False
+        nonNegativeCycleDelayAssertions = eval(ta.nonNegativeCycleDelayAssertions) if hasattr(ta, "nonNegativeCycleDelayAssertions") else False
         nonNegativeCycleAssertions = eval(ta.nonNegativeCycleAssertions) if hasattr(ta, "nonNegativeCycleAssertions") else False
 
         ctx = self.__initDecisionVariables(ta, cycleCounterType, realValuedParameters)
@@ -241,8 +242,9 @@ class Path:
           nonNegativeDelays = list(map(lambda a: f"{a} >= 0", delayNames)) if nonNegativeDelayAssertions else []
           joinedAssertions = "And(" + str.join(", ", nonNegativeDelays + self.assertions) + ")"
         else:
+          nonNegativeDelays = list(map(lambda a: f"{a} >= 0", delayNames)) if nonNegativeCycleDelayAssertions else []
           nonnegativeCycles = list(map(lambda a: f"{a} >= 0", self.cycleCounters)) if nonNegativeCycleAssertions else []
-          joinedAssertions = "And(" + str.join(", ", self.assertions + nonnegativeCycles) + ")"
+          joinedAssertions = "And(" + str.join(", ", self.assertions + nonNegativeDelays + nonnegativeCycles) + ")"
           t = With(t, qe_nonlinear=True, ctx=ctx)
             
         qeArgs = str.join(", ", firstDelayNames + averageDelayNames + delayNames + self.cycleCounters)

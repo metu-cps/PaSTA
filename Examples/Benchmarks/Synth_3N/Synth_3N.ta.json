@@ -1,0 +1,23 @@
+{
+    "name": "Synth_3N",
+    "locations": ["L1", "L2", "L3"],
+    "initialLocation": "L1",
+    "actions": ["a", "b", "c"],
+    "clocks": ["x", "y"],
+    "transitions": [
+        {"source": "L1", "target": "L1", "action": "a", "reset": ["x"], "guardConstraints": ["x >= 3", "x <= 3"]},
+        {"source": "L1", "target": "L2", "action": "b", "reset": [], "guardConstraints": ["p1 >= y", "p1 <= y"]},
+        {"source": "L2", "target": "L3", "action": "c", "reset": [], "guardConstraints": ["x >= 0", "x <= 0"]}
+    ],
+    "invariants": [
+        {"location": "L1", "constraints": []},
+        {"location": "L2", "constraints": []},
+        {"location": "L3", "constraints": []}
+    ],
+    "parameters": [
+        {"name": "p1", "lowerBound": 1, "upperBound": 10}
+    ],
+    "cycleCounterType": "Int",
+    "nonNegativeDelayAssertions": "True",
+    "nonNegativeCycleDelayAssertions": "True"
+}
