@@ -1,21 +1,21 @@
 (*******************************************************************************
  *                                IMITATOR MODEL                               
  * 
- * Title            : synth3N
- * Description      : Toy benchmark for which the result is "p = 3i | i \in N" but IMITATOR cannot find it because the accumulated constraints grow forever
+ * Title            : synthRplus
+ * Description      : Toy benchmark for which the result is "p >= 0" but IMITATOR cannot find it because the accumulated constraints grow forever
  * Correctness      : Reachability
  * Scalable         : no
  * Generated        : no
  * Categories       : Academic ; Toy ; Unsolvable
- * Source           : Göller, S., & Hilaire, M. (2021). Reachability in two-parametric timed automata with one parameter is EXPSPACE-complete.
- * bibkey           : GH21
- * Author           : 
- * Modeling         : Dylan Marinho
- * Input by         : Dylan Marinho
- * License          : Creative Commons Attribution 4.0 International (CC BY 4.0)
+ * Source           : Own work
+ * bibkey           : 
+ * Author           : Étienne André
+ * Modeling         : Étienne André
+ * Input by         : Étienne André
+ * License          : Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)
  * 
- * Created          : 2021/09/16
- * Last modified    : 2021/09/19
+ * Created          : 2020/09/24
+ * Last modified    : 2021/08/31
  * Model version    : 
  * 
  * IMITATOR version : 3.1
@@ -38,15 +38,11 @@ var
 (************************************************************)
 actions: ;
 
-loc l1: invariant True
-	when x = 3 do {x := 0} goto l1;
-	when y = p goto l2;
-
-loc l2: invariant True
-  when x = 0 goto lGoal;
+loc l1: invariant x <= 1
+	when x = 1 do {x := 0} goto l1;
+	when x = 0 & y >= p do {x := 0, y := 0} goto lGoal;
 
 loc lGoal: invariant True
-  when x >= 0 goto lGoal;
 
 end (* pta *)
 

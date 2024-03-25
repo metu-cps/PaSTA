@@ -1,0 +1,20 @@
+{
+    "name": "Cycles_exU_noloop",
+    "locations": ["L1", "L2"],
+    "initialLocation": "L1",
+    "actions": ["a", "b"],
+    "clocks": ["x", "y"],
+    "transitions": [
+        {"source": "L1", "target": "L1", "action": "a", "reset": ["x"], "guardConstraints": ["x >= 1", "x <= 1"]},
+        {"source": "L1", "target": "L2", "action": "b", "reset": [], "guardConstraints": ["p1 >= y"]}
+    ],
+    "invariants": [
+        {"location": "L1", "constraints": ["p1 >= y"]},
+        {"location": "L2", "constraints": []}
+    ],
+    "parameters": [
+        {"name": "p1", "lowerBound": 0, "upperBound": 10}
+    ],
+    "nonNegativeDelayAssertions": "True",
+    "nonNegativeCycleDelayAssertions": "True"
+}

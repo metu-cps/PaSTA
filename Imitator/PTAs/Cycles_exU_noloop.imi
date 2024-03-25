@@ -1,21 +1,21 @@
 (*******************************************************************************
  *                                IMITATOR MODEL                               
  * 
- * Title            : synth3N
- * Description      : Toy benchmark for which the result is "p = 3i | i \in N" but IMITATOR cannot find it because the accumulated constraints grow forever
- * Correctness      : Reachability
+ * Title            : exU_noloop
+ * Description      : U-PTA for which there exists a loop in the trace set of p=infinity, but not for any actual parameter valuation. NOTE: principle similar to `infinite:infeasiblePath.imi`
+ * Correctness      : 
  * Scalable         : no
  * Generated        : no
  * Categories       : Academic ; Toy ; Unsolvable
- * Source           : Göller, S., & Hilaire, M. (2021). Reachability in two-parametric timed automata with one parameter is EXPSPACE-complete.
- * bibkey           : GH21
- * Author           : 
- * Modeling         : Dylan Marinho
- * Input by         : Dylan Marinho
- * License          : Creative Commons Attribution 4.0 International (CC BY 4.0)
+ * Source           : Didier Lime
+ * bibkey           : 
+ * Author           : Didier Lime
+ * Modeling         : Étienne André
+ * Input by         : Étienne André
+ * License          : Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)
  * 
- * Created          : 2021/09/16
- * Last modified    : 2021/09/19
+ * Created          : 2015/09/30
+ * Last modified    : 2021/08/30
  * Model version    : 
  * 
  * IMITATOR version : 3.1
@@ -24,11 +24,11 @@
 var
 
 (* Clocks *)
- 	x, y,
+ 	x, y
 		: clock;
 
 (* Parameters *)
-	p,
+	p
 		: parameter;
 
 
@@ -38,16 +38,11 @@ var
 (************************************************************)
 actions: ;
 
-loc l1: invariant True
-	when x = 3 do {x := 0} goto l1;
-	when y = p goto l2;
+loc l1: invariant y <= p
+	when x = 1 do {x := 0} goto l1;
+	when y <= p goto l2;
 
 loc l2: invariant True
-  when x = 0 goto lGoal;
-
-loc lGoal: invariant True
-  when x >= 0 goto lGoal;
-
 end (* pta *)
 
 

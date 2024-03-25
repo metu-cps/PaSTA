@@ -1,0 +1,20 @@
+{
+    "name": "ALR15_fig2a",
+    "locations": ["L1", "L2"],
+    "initialLocation": "L1",
+    "actions": ["a", "b"],
+    "clocks": ["x", "y"],
+    "transitions": [
+        {"source": "L1", "target": "L1", "action": "a", "reset": ["x"], "guardConstraints": []},
+        {"source": "L1", "target": "L2", "action": "b", "reset": [], "guardConstraints": ["y > 1"]}
+    ],
+    "invariants": [
+        {"location": "L1", "constraints": ["p1 >= x"]},
+        {"location": "L2", "constraints": []}
+    ],
+    "parameters": [
+        {"name": "p1", "lowerBound": -0.0000000000001, "upperBound": 1}
+    ],
+    "nonNegativeDelayAssertions": "True",
+    "nonNegativeCycleDelayAssertions": "True"
+}
