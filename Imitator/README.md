@@ -32,6 +32,6 @@ Safety Benchmarks:
     # docker run -v ${PWD}:/mnt/ptas imitator/imitator /mnt/ptas/Synth_N.imi /mnt/ptas/Synth_N-AGnot.imiprop
     # docker run -v ${PWD}:/mnt/ptas imitator/imitator /mnt/ptas/Synth_pN.imi /mnt/ptas/Synth_pN-AGnot.imiprop
     # docker run -v ${PWD}:/mnt/ptas imitator/imitator /mnt/ptas/Synth_pNplusq.imi /mnt/ptas/Synth_pNplusq-AGnot.imiprop
-    # docker run -v ${PWD}:/mnt/ptas imitator/imitator /mnt/ptas/Synth_Rplus.imi /mnt/ptas/Synth_Rplus-AGnot.imiprop
+    docker run -v ${PWD}:/mnt/ptas imitator/imitator /mnt/ptas/Synth_Rplus.imi /mnt/ptas/Synth_Rplus-AGnot.imiprop
     docker run -v ${PWD}:/mnt/ptas imitator/imitator /mnt/ptas/Train1PTA.imi /mnt/ptas/Train1PTA-AGnot.imiprop
     docker run -v ${PWD}:/mnt/ptas imitator/imitator /mnt/ptas/UntimedLanguage.imi /mnt/ptas/UntimedLanguage-AGnot.imiprop
