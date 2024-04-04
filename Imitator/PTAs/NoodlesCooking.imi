@@ -1,0 +1,90 @@
+(*******************************************************************************
+ *                                IMITATOR MODEL                               
+ * 
+ * Title            : NoodlesCooking
+ * Description      : Toy example to cook noodles
+ * Correctness      : The water must not boil over [in fact, no parameter valuation can prevent this, because the timer is not necessarily set from the beginning!]
+ * Scalable         : 
+ * Generated        : 
+ * Categories       : Education ; Toy
+ * Source           : "SITH" course final examination at Institut Galilée, Université Paris 13 (2013-2014)
+ * bibkey           : 
+ * Author           : Étienne André
+ * Modeling         : Étienne André
+ * Input by         : Étienne André
+ * License          : 
+ * 
+ * Created          : 2014/03/21
+ * Last modified    : 2021/08/30
+ * Model version    : 
+ * 
+ * IMITATOR version : 3.1
+ ******************************************************************************)
+
+
+
+
+var 	xPot, xTimer
+		: clock;
+
+	dPot, dTimer
+		: parameter;
+
+
+
+(************************************************************)
+  automaton system
+(************************************************************)
+actions: startTimer, ring, boilover, miam;
+
+loc heating: invariant xPot <= dPot
+	when True do {xTimer := 0} sync startTimer goto ticking;
+	when xPot = dPot sync boilover goto catastrophe;
+
+loc ticking: invariant xPot <= dPot & xTimer <= dTimer
+	when xTimer = dTimer sync ring goto cooked;
+	when xPot = dPot sync boilover goto catastrophe;
+
+loc cooked: invariant xPot <= dPot
+	when xPot = dPot sync miam goto eating;
+
+loc eating: invariant True
+
+loc catastrophe: invariant True
+end (* system *)
+
+
+
+(************************************************************)
+(* Initial state *)
+(************************************************************)
+init := {
+	discrete =
+		(*------------------------------------------------------------*)
+		(*   INITIAL LOCATION *)
+		(*------------------------------------------------------------*)
+		loc[system] := heating,
+	;
+
+	continuous =
+		(*------------------------------------------------------------*)
+		(*   INITIAL CLOCKS *)
+		(*------------------------------------------------------------*)
+		& xPot = 0
+		& xTimer = 0
+
+		(*------------------------------------------------------------*)
+		(*   PARAMETER CONSTRAINTS *)
+		(*------------------------------------------------------------*)
+		& dPot >= 0
+		& dTimer >= 0
+		& dPot <= 10
+		& dTimer <= 10
+	;
+}
+
+
+(************************************************************)
+(* The end *)
+(************************************************************)
+end
